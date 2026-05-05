@@ -1,0 +1,53 @@
+# ══════════════════════════════════════════════════════════════════════════════
+# KCorp Scouting Tool — .gitignore
+# ══════════════════════════════════════════════════════════════════════════════
+
+# --- Données (trop volumineuses pour Git) ---
+data/raw/
+data/interim/
+data/processed/
+data/external/
+*.csv
+*.parquet
+*.db
+*.sqlite
+
+# --- Modèles entraînés ---
+models/*.pkl
+models/*.pt
+models/*.joblib
+!models/.gitkeep
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# --- Environnement ---
+.env
+.venv/
+venv/
+env/
+
+# --- IDE ---
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --- Jupyter ---
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Logs ---
+logs/
+*.log
