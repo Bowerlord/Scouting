@@ -1,0 +1,69 @@
+{
+  "comparison": [
+    {
+      "model_name": "Logistic Regression (baseline)",
+      "pr_auc": 0.2557,
+      "roc_auc": 0.7293,
+      "precision_at_104": 0.2404,
+      "recall_at_104": 0.2404,
+      "k": 104
+    },
+    {
+      "model_name": "Random Forest",
+      "pr_auc": 0.1903,
+      "roc_auc": 0.6952,
+      "precision_at_104": 0.2115,
+      "recall_at_104": 0.2115,
+      "k": 104
+    },
+    {
+      "model_name": "Random Forest (tuned)",
+      "pr_auc": 0.182,
+      "roc_auc": 0.6886,
+      "precision_at_104": 0.1923,
+      "recall_at_104": 0.1923,
+      "k": 104
+    },
+    {
+      "model_name": "XGBoost",
+      "pr_auc": 0.1652,
+      "roc_auc": 0.6606,
+      "precision_at_104": 0.1346,
+      "recall_at_104": 0.1346,
+      "k": 104
+    }
+  ],
+  "best_model": "Logistic Regression (baseline)",
+  "train_years": [
+    2024
+  ],
+  "test_years": [
+    2025
+  ],
+  "train_size": 739,
+  "test_size": 977,
+  "n_features": 12,
+  "features_used": [
+    "killparticipation_zscore",
+    "dpm_zscore",
+    "cspm_zscore",
+    "vspm_zscore",
+    "golddiffat15_zscore",
+    "csdiffat15_zscore",
+    "xpdiffat15_zscore",
+    "win_rate_zscore",
+    "champion_pool_size_zscore",
+    "win_rate",
+    "games_played",
+    "champion_pool_size"
+  ],
+  "rf_tuned_params": {
+    "n_estimators": 100,
+    "min_samples_split": 10,
+    "min_samples_leaf": 4,
+    "max_features": 0.5,
+    "max_depth": 6,
+    "class_weight": "balanced"
+  },
+  "rf_tuned_cv_pr_auc": NaN
+}

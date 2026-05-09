@@ -162,8 +162,11 @@ XGB_PARAMS = {
 # Clustering
 CLUSTER_PARAMS = {
     "k_range": range(3, 12),  # Range de k à tester pour K-Means
-    "dbscan_eps_range": [0.3, 0.5, 0.7, 1.0],
-    "dbscan_min_samples": 5,
+    # DBSCAN : eps plus grand car espace 9D après StandardScaler
+    # (la "malédiction de la dimensionnalité" dilate les distances)
+    # Règle empirique : chercher le coude dans la courbe des k-NN distances
+    "dbscan_eps_range": [1.5, 2.0, 2.5, 3.0, 4.0],
+    "dbscan_min_samples": 8,
 }
 
 # Autoencoder PyTorch
