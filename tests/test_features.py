@@ -127,6 +127,77 @@ class TestTargetVariable:
             f"Taux de promotion anormal : {rate:.1%}"
 
 
+# ── Tests Target Datée (anti-fuite temporelle) ────────────────────────────────
+
+class TestDatedTarget:
+    """Valide la target datée de src.data.cleaner.build_dated_target_from_oracle.
+
+    On construit des matchs ERL + LEC à des dates contrôlées pour vérifier que
+    seuls les matchs ERL ANTÉRIEURS au début LEC (et dans l'horizon) sont positifs.
+    """
+
+    @staticmethod
+    def _matches(rows):
+        """Construit un DataFrame de matchs à partir de tuples (player, league, date)."""
+        return pd.DataFrame(
+            [{"playername": p, "league": lg, "date": d} for p, lg, d in rows]
+        )
+
+    def test_pre_promotion_match_is_positive(self):
+        """Un match ERL joué AVANT le début LEC (dans l'horizon) est positif."""
+        from src.data.cleaner import build_dated_target_from_oracle
+        df = self._matches([
+            ("caps", "LFL", "2024-03-01"),   # ERL avant promotion
+            ("caps", "LEC", "2024-09-01"),   # début LEC 6 mois plus tard
+        ])
+        target = build_dated_target_from_oracle(df, horizon_months=18)
+        assert target.iloc[0], "Le match ERL pré-promotion devrait être positif"
+        assert not target.iloc[1], "La ligne LEC ne doit jamais être positive"
+
+    def test_relegated_ex_lec_is_negative(self):
+        """Un ex-joueur LEC relégué en ERL n'est PAS une pépite (fuite corrigée)."""
+        from src.data.cleaner import build_dated_target_from_oracle
+        df = self._matches([
+            ("veteran", "LEC", "2024-02-01"),  # début LEC EN PREMIER
+            ("veteran", "LFL", "2025-03-01"),  # relégué en ERL APRÈS
+        ])
+        target = build_dated_target_from_oracle(df, horizon_months=18)
+        assert not target.iloc[1], \
+            "Un match ERL postérieur au début LEC ne doit pas être positif"
+
+    def test_promotion_beyond_horizon_is_negative(self):
+        """Une promotion trop lointaine (au-delà de l'horizon) reste négative."""
+        from src.data.cleaner import build_dated_target_from_oracle
+        df = self._matches([
+            ("slow", "LFL", "2024-01-01"),   # ERL
+            ("slow", "LEC", "2026-06-01"),   # début LEC ~29 mois plus tard
+        ])
+        target = build_dated_target_from_oracle(df, horizon_months=18)
+        assert not target.iloc[0], \
+            "Un match à plus de 18 mois du début LEC ne doit pas être positif"
+
+    def test_never_promoted_is_negative(self):
+        """Un joueur qui n'atteint jamais la LEC reste négatif."""
+        from src.data.cleaner import build_dated_target_from_oracle
+        df = self._matches([
+            ("journeyman", "LFL", "2024-03-01"),
+            ("journeyman", "PRM", "2025-03-01"),
+        ])
+        target = build_dated_target_from_oracle(df, horizon_months=18)
+        assert not target.any(), "Aucun match ne doit être positif sans début LEC"
+
+    def test_debut_date_is_first_lec_appearance(self):
+        """La date de début LEC est bien le PREMIER match LEC du joueur."""
+        from src.data.cleaner import compute_lec_debut_dates
+        df = self._matches([
+            ("star", "LEC", "2025-06-01"),
+            ("star", "LEC", "2025-01-15"),   # plus ancien → doit primer
+            ("star", "LEC", "2025-08-01"),
+        ])
+        debuts = compute_lec_debut_dates(df)
+        assert debuts["star"] == pd.Timestamp("2025-01-15")
+
+
 # ── Tests Dataset Output ──────────────────────────────────────────────────────
 
 class TestDatasetStructure:

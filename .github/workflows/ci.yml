@@ -31,11 +31,12 @@ jobs:
       - name: Installation des dépendances
         # torch/shap sont volumineux et inutiles pour lint + tests unitaires ;
         # on installe uniquement les dépendances effectivement importées par la
-        # suite de tests (test_models importe src.models.clusterer → joblib + loguru)
-        # pour garder la CI rapide et fiable. umap-learn est optionnel (test skippé).
+        # suite de tests : test_models → src.models.clusterer (joblib, loguru) ;
+        # test_features → src.data.cleaner → src.data.leaguepedia (requests).
+        # On garde la CI rapide et fiable. umap-learn est optionnel (test skippé).
         run: |
           python -m pip install --upgrade pip
-          pip install pandas numpy scikit-learn joblib loguru pytest ruff
+          pip install pandas numpy scikit-learn joblib loguru requests pytest ruff
 
       - name: Lint (ruff)
         run: ruff check src/ tests/
