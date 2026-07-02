@@ -1,5 +1,7 @@
 # 🏆 KCorp Scouting Tool
 
+[![CI](https://github.com/Bowerlord/Scouting/actions/workflows/ci.yml/badge.svg)](https://github.com/Bowerlord/Scouting/actions/workflows/ci.yml)
+
 > **Un outil de Machine Learning pour identifier les pépites esport dans les ligues mineures européennes de League of Legends.**
 
 Ce projet simule un outil de scouting data-driven pour la structure esport [Karmine Corp](https://www.karminecorp.fr/). L'objectif : analyser les performances des joueurs amateurs dans les ERLs (European Regional Leagues) et prédire lesquels ont le potentiel pour évoluer au plus haut niveau (LEC).
@@ -123,9 +125,11 @@ Le fichier généré est `data/processed/features_players.csv` (2 405 lignes, 31
 
 1. **Out-of-Time split (Train 2024 → Test 2025)** : Un split aléatoire créerait du *data leakage* — le modèle verrait des données du futur pendant l'entraînement. Le split temporel simule un vrai déploiement : "Je forme le modèle sur 2024, et je l'utilise pour scorer les joueurs 2025."
 
-2. **PR-AUC comme métrique principale** : Avec ~8% de joueurs promus, l'accuracy est trompeuse (un modèle naïf "tout-0" ferait 92%). La PR-AUC se concentre sur la qualité du ranking des positifs.
+2. **Target *datée* (anti-fuite temporelle)** : la target `promoted_to_lec` n'est pas « ce joueur a joué en LEC un jour », mais « ce joueur débute en LEC dans les 18 mois **qui suivent** ce match ». Ce raffinement (implémenté dans `cleaner.py`, paramètre `PROMOTION_HORIZON_MONTHS`) corrige deux fuites : (a) un ex-joueur LEC relégué en ERL n'est plus étiqueté « pépite » puisque sa promotion est passée ; (b) on ne « prédit » plus une promotion déjà survenue au moment du match observé. Le signal appris devient réellement *prédictif*.
 
-3. **Trois modèles comparés** : LR (baseline) → RF → XGBoost. Le RF a été optimisé avec `RandomizedSearchCV` (60 itérations, 5-fold stratifié).
+3. **PR-AUC comme métrique principale** : Avec ~8% de joueurs promus, l'accuracy est trompeuse (un modèle naïf "tout-0" ferait 92%). La PR-AUC se concentre sur la qualité du ranking des positifs.
+
+4. **Trois modèles comparés** : LR (baseline) → RF → XGBoost. Le RF a été optimisé avec `RandomizedSearchCV` (60 itérations, 5-fold stratifié).
 
 🔧 **Ce qu'on a fait** :
 - Split : **739 lignes train** (2024) | **977 lignes test** (2025), déséquilibre géré par `class_weight='balanced'`
@@ -304,9 +308,16 @@ kcorp-scouting/
 │   ├── visualization/               # Plots
 │   └── utils/                       # Logger, helpers
 │
+├── app/                             # Dashboard Streamlit
+│   ├── app.py                       # Page d'accueil
+│   ├── pages/                       # Leaderboard, Profil Joueur, Scout Mode
+│   └── utils/                       # Chargement des résultats (cache)
+│
 ├── models/                          # Modèles sauvegardés (.pkl, .pt)
 ├── reports/                         # Figures et métriques
-└── tests/                           # Tests unitaires
+├── tests/                           # Tests unitaires
+├── .streamlit/                      # Config du dashboard (thème)
+└── .github/workflows/               # CI (lint + tests)
 ```
 
 ---
@@ -315,8 +326,8 @@ kcorp-scouting/
 
 ```bash
 # 1. Cloner le repo
-git clone https://github.com/bower/kcorp-scouting.git
-cd kcorp-scouting
+git clone https://github.com/Bowerlord/Scouting.git
+cd Scouting
 
 # 2. Créer un environnement virtuel
 python -m venv .venv
@@ -325,10 +336,50 @@ source .venv/bin/activate  # Linux/Mac
 
 # 3. Installer les dépendances
 pip install -r requirements.txt
+# Outils de dev (tests, lint) — optionnel :
+# pip install -r requirements-dev.txt
 
-# 4. Lancer le pipeline complet
+# 4. Lancer le pipeline complet (data → features → train → cluster)
 make all
+
+# 5. Lancer le dashboard interactif
+make app   # ou : streamlit run app/app.py
 ```
+
+---
+
+## 🖥️ Dashboard interactif (Streamlit)
+
+Le dashboard offre trois vues de scouting, alimentées par les résultats du pipeline ML :
+
+| Page | Contenu |
+|---|---|
+| 🏆 **Leaderboard** | Classement des joueurs ERL par Talent Score, filtrable par ligue et position |
+| 👤 **Profil Joueur** | Fiche détaillée d'un joueur : score, Z-scores, archétype de style de jeu |
+| 🔍 **Scout Mode** | Recherche par style (« trouve-moi un joueur qui joue comme X ») et filtres par archétype |
+
+### Lancer en local
+
+```bash
+make run-pipeline          # génère les CSV de résultats lus par l'app
+make app                   # démarre le dashboard sur http://localhost:8501
+```
+
+### Déployer sur Streamlit Community Cloud (gratuit)
+
+Le dashboard ne relance jamais le pipeline ML : il lit des snapshots figés dans
+`reports/metrics/`. Pour déployer :
+
+1. `make run-pipeline` en local pour générer `talent_scores_players.csv` et
+   `clustering_results.csv` (ces deux fichiers sont volontairement versionnables
+   — voir `.gitignore`).
+2. Committer ces fichiers, puis pousser le repo.
+3. Sur [share.streamlit.io](https://share.streamlit.io), pointer vers `app/app.py`
+   avec `requirements.txt` comme fichier de dépendances.
+
+> ℹ️ Streamlit Cloud clone simplement le repo ; il ne dispose ni des ~150 Mo de
+> données brutes ni des modèles entraînés. Seuls les résultats pré-calculés
+> (quelques milliers de lignes) sont nécessaires à l'exécution du dashboard.
 
 ---
 
@@ -348,6 +399,7 @@ make all
 
 - **Biais de sélection** : Seuls les joueurs qui ont déjà joué en ERL sont dans les données. Les talents non détectés (joueurs Solo Queue) sont invisibles.
 - **Target variable imparfaite** : "Promu en LEC" ≠ "bon joueur". Certains bons joueurs n'ont jamais eu l'opportunité.
+- **Censure à droite (right-censoring)** : la target datée ne peut étiqueter que les promotions déjà présentes dans les données. Un joueur promu *après* l'horizon des données (ex : LEC 2026 Summer, hors CSV) reste étiqueté négatif — sa promotion n'est simplement pas encore observable.
 - **Ce que le modèle ne capture pas** : Mental (tilt, pression), communication, capacité d'adaptation, motivation.
 - **Données limitées à 2024-2026** : La méta de LoL change entre les saisons — un modèle entraîné sur 2024 peut être moins pertinent pour 2026.
 
@@ -355,9 +407,12 @@ make all
 
 ## 📈 Améliorations Futures
 
-- [ ] 📱 Dashboard Streamlit interactif
+- [x] 📱 Dashboard Streamlit interactif *(voir section Dashboard)*
+- [x] 🎯 Target datée pour éliminer la fuite temporelle *(voir ci-dessous)*
+- [x] ⚙️ Intégration continue (CI) : lint + tests automatiques
 - [ ] 🎮 Intégration des données Solo Queue (Riot API)
 - [ ] 📈 Modèle temporel (LSTM) pour capturer la progression
+- [ ] 📊 Calibration du Talent Score (probabilités → percentiles de rang)
 - [ ] 🌍 Extension aux ERLs mineures (Benelux, Italie, etc.)
 
 ---

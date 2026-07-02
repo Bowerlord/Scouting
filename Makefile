@@ -13,7 +13,7 @@
 #   make all        → Pipeline complet (data → features → train → cluster)
 #   make test       → Lance les tests unitaires
 
-.PHONY: help data clean features train cluster all test lint format
+.PHONY: help data clean features train cluster run-pipeline app all test lint format
 
 # ── Commande par défaut ──────────────────────────────────────────────────────
 help:
@@ -25,6 +25,8 @@ help:
 	@echo "║  make features  │ Construit les features ML            ║"
 	@echo "║  make train     │ Entraîne le Talent Score             ║"
 	@echo "║  make cluster   │ Exécute le Playstyle Clustering      ║"
+	@echo "║  make run-pipeline │ Génère les résultats du dashboard ║"
+	@echo "║  make app       │ Lance le dashboard Streamlit         ║"
 	@echo "║  make all       │ Pipeline complet                     ║"
 	@echo "║  make test      │ Lance les tests unitaires            ║"
 	@echo "║  make lint      │ Vérifie le code (ruff)               ║"
@@ -52,6 +54,17 @@ train: features
 cluster: features
 	@echo "🔬 Exécution du Playstyle Clustering..."
 	python -m src.models.clusterer
+
+# ── Dashboard ────────────────────────────────────────────────────────────────
+# run-pipeline : produit les artefacts lus par le dashboard
+#   (reports/metrics/talent_scores_players.csv + clustering_results.csv).
+#   À lancer une fois, puis committer ces CSV pour déployer sur Streamlit Cloud.
+run-pipeline: train cluster
+	@echo "✅ Résultats du dashboard générés dans reports/metrics/"
+
+app:
+	@echo "🚀 Lancement du dashboard Streamlit..."
+	streamlit run app/app.py
 
 # ── Pipeline complet ─────────────────────────────────────────────────────────
 all: data clean features train cluster
