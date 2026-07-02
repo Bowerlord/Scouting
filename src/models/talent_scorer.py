@@ -24,33 +24,30 @@ Usage :
 
 import json
 import warnings
-from pathlib import Path
 
+import joblib
 import numpy as np
 import pandas as pd
+import xgboost as xgb
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
     average_precision_score,
-    make_scorer,
-    precision_recall_curve,
     roc_auc_score,
 )
 from sklearn.model_selection import RandomizedSearchCV, StratifiedKFold
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
-import joblib
-import xgboost as xgb
 
 from src.config import (
+    METRICS_DIR,
     MODELS_DIR,
     PROCESSED_DATA_DIR,
-    METRICS_DIR,
     RANDOM_STATE,
     RF_PARAMS,
-    XGB_PARAMS,
-    TRAIN_YEARS,
     TEST_YEARS,
+    TRAIN_YEARS,
+    XGB_PARAMS,
 )
 from src.utils.logger import logger
 
@@ -142,7 +139,7 @@ def make_out_of_time_split(
     X_test = df_test[available_features].fillna(0)
     y_test = df_test[TARGET_COL].astype(int)
 
-    logger.info(f"📊 Split temporel Out-of-Time :")
+    logger.info("📊 Split temporel Out-of-Time :")
     logger.info(f"   Train ({TRAIN_YEARS}) : {len(X_train):,} lignes | {y_train.sum()} promus ({y_train.mean():.1%})")
     logger.info(f"   Test  ({TEST_YEARS})  : {len(X_test):,} lignes  | {y_test.sum()} promus ({y_test.mean():.1%})")
 
@@ -217,8 +214,9 @@ def build_xgboost() -> xgb.XGBClassifier:
     exact (= ratio négatifs/positifs dans le train set).
     """
     params = XGB_PARAMS.copy()
-    # Le scale_pos_weight sera mis à jour dynamiquement avant l'entraînement
-    params["use_label_encoder"] = False
+    # Le scale_pos_weight sera mis à jour dynamiquement avant l'entraînement.
+    # Note : use_label_encoder a été supprimé dans XGBoost >= 2.0 (le passer
+    # déclenche une erreur), on ne le fixe donc plus.
     params["verbosity"] = 0
     return xgb.XGBClassifier(**params)
 
@@ -252,7 +250,6 @@ def evaluate_model(
     """
     # Probabilités de promotion (score continu 0-1)
     y_proba = model.predict_proba(X_test)[:, 1]
-    y_pred = (y_proba >= 0.5).astype(int)
 
     pr_auc = average_precision_score(y_test, y_proba)
     roc_auc = roc_auc_score(y_test, y_proba)
@@ -406,14 +403,16 @@ def tune_random_forest(
     # StratifiedKFold pour respecter le ratio de classes à chaque fold
     cv = StratifiedKFold(n_splits=cv_folds, shuffle=True, random_state=RANDOM_STATE)
 
-    # Scorer basé sur PR-AUC (average_precision_score)
-    pr_auc_scorer = make_scorer(average_precision_score, needs_proba=True)
+    # Scorer basé sur PR-AUC. On utilise la chaîne native de scikit-learn
+    # ("average_precision") plutôt que make_scorer(needs_proba=True) : le paramètre
+    # needs_proba a été déprécié en 1.4 et supprimé en 1.6. Le scorer natif applique
+    # automatiquement predict_proba et reste compatible toutes versions.
 
     search = RandomizedSearchCV(
         estimator=base_rf,
         param_distributions=param_distributions,
         n_iter=n_iter,
-        scoring=pr_auc_scorer,
+        scoring="average_precision",
         cv=cv,
         refit=True,       # Re-entraîne le meilleur modèle sur tout le train set
         n_jobs=-1,
@@ -424,7 +423,7 @@ def tune_random_forest(
     search.fit(X_train, y_train)
 
     logger.info(f"\nMeilleure PR-AUC (CV) : {search.best_score_:.4f}")
-    logger.info(f"Meilleurs hyperparamètres :")
+    logger.info("Meilleurs hyperparamètres :")
     for param, value in search.best_params_.items():
         logger.info(f"   {param:<25} = {value}")
 
@@ -453,7 +452,10 @@ def run_talent_scoring_pipeline():
     neg_count = (y_train == 0).sum()
     pos_count = (y_train == 1).sum()
     scale_pos_weight = neg_count / max(pos_count, 1)
-    logger.info(f"⚖️  Déséquilibre train : {neg_count} négatifs / {pos_count} positifs → scale_pos_weight={scale_pos_weight:.1f}")
+    logger.info(
+        f"⚖️  Déséquilibre train : {neg_count} négatifs / {pos_count} positifs "
+        f"→ scale_pos_weight={scale_pos_weight:.1f}"
+    )
 
     # ── Construction des modèles ─────────────────────────────────────────────
     models = {
@@ -508,7 +510,7 @@ def run_talent_scoring_pipeline():
     logger.info("\n🎯 Scoring de tous les joueurs ERL...")
     all_scores = score_all_players(best_model, df, FEATURE_COLS)
 
-    logger.info(f"\n🏅 Top 10 Talents ERL :")
+    logger.info("\n🏅 Top 10 Talents ERL :")
     logger.info(f"{'Rang':<5} {'Joueur':<20} {'Ligue':<10} {'Pos':<5} {'Score':<8} {'Promu?'}")
     for i, (_, row) in enumerate(all_scores.head(10).iterrows(), 1):
         promoted = "✅" if row.get("promoted_to_lec", False) else "❌"

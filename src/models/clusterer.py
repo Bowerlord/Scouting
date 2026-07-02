@@ -25,7 +25,6 @@ Usage :
 
 import json
 import warnings
-from pathlib import Path
 
 import joblib
 import numpy as np
@@ -233,7 +232,10 @@ def find_similar_players(
     )
     logger.info(f"\nJoueurs similaires à '{target_name}' :")
     for _, row in result.iterrows():
-        logger.info(f"  {row['playername']:<20} {row['league']:<10} {row['position']:<5} dist={row['similarity_distance']:.3f}")
+        logger.info(
+            f"  {row['playername']:<20} {row['league']:<10} {row['position']:<5} "
+            f"dist={row['similarity_distance']:.3f}"
+        )
     return result
 
 
@@ -350,7 +352,7 @@ def run_clustering_pipeline():
     logger.info("PHASE 6 TERMINEE")
     logger.info(f"  Positions traitées : {list(results_by_position.keys())}")
     logger.info(f"  Joueurs clustérés  : {len(df):,}")
-    logger.info(f"  Fichiers générés   : clustering_results.csv, cluster_profiles.json")
+    logger.info("  Fichiers générés   : clustering_results.csv, cluster_profiles.json")
     logger.info("=" * 60)
 
     return df, results_by_position, summary_df

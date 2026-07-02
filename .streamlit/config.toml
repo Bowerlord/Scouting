@@ -1,0 +1,14 @@
+# Configuration du dashboard Streamlit (KCorp Scouting Tool)
+# Thème sombre cohérent avec les visualisations du projet (fond #0f172a).
+
+[theme]
+base = "dark"
+primaryColor = "#3b82f6"          # Bleu (accent Karmine-like)
+backgroundColor = "#0f172a"       # Fond principal (slate 900)
+secondaryBackgroundColor = "#1e293b"  # Panneaux (slate 800)
+textColor = "#f1f5f9"             # Texte clair (slate 100)
+font = "sans serif"
+
+[server]
+# Confort local ; sans effet sur Streamlit Community Cloud.
+headless = true

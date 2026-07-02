@@ -18,6 +18,14 @@ models/*.pt
 models/*.joblib
 !models/.gitkeep
 
+# --- Exceptions : artefacts légers du dashboard ---
+# Ces CSV de résultats (quelques milliers de lignes) sont nécessaires au
+# dashboard Streamlit déployé (Streamlit Cloud clone le repo sans lancer le
+# pipeline ML). On les versionne malgré la règle *.csv ci-dessus.
+# Générés par `make run-pipeline`, puis à committer pour le déploiement.
+!reports/metrics/talent_scores_players.csv
+!reports/metrics/clustering_results.csv
+
 # --- Python ---
 __pycache__/
 *.py[cod]

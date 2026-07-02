@@ -33,20 +33,20 @@ Limites connues :
   - Ce module est "best effort" : le pipeline fonctionne même sans Leaguepedia
 """
 
-import time
 import json
-import requests
+import time
 from pathlib import Path
 
+import requests
+
 from src.config import (
+    DATA_YEARS,
     ERL_DIV1_LEAGUES,
     ERL_DIV2_LEAGUES,
-    TOP_LEAGUE,
     EXTERNAL_DATA_DIR,
-    DATA_YEARS,
+    TOP_LEAGUE,
 )
 from src.utils.logger import logger
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Configuration de l'API Leaguepedia
@@ -490,7 +490,7 @@ def run_leaguepedia_pipeline(force: bool = False) -> tuple[dict, dict]:
         Tuple (career_map, promotions)
     """
     logger.info(f"{'='*60}")
-    logger.info(f"📚 LEAGUEPEDIA — Récupération des données de carrière")
+    logger.info("📚 LEAGUEPEDIA — Récupération des données de carrière")
     logger.info(f"{'='*60}")
 
     # Vérifier le cache

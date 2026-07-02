@@ -31,24 +31,23 @@ Usage :
   python -m src.data.cleaner
 """
 
-import pandas as pd
+
 import numpy as np
-from pathlib import Path
+import pandas as pd
 
 from src.config import (
-    RAW_DATA_DIR,
-    INTERIM_DATA_DIR,
-    EXTERNAL_DATA_DIR,
-    DATA_YEARS,
     ALL_TARGET_LEAGUES,
+    DATA_YEARS,
     ERL_DIV1_LEAGUES,
     ERL_DIV2_LEAGUES,
-    TOP_LEAGUE,
+    INTERIM_DATA_DIR,
     KEY_COLUMNS,
+    PROMOTION_HORIZON_MONTHS,
+    RAW_DATA_DIR,
+    TOP_LEAGUE,
 )
-from src.utils.logger import logger
 from src.data.leaguepedia import load_career_data
-
+from src.utils.logger import logger
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Chargement des données brutes
@@ -183,7 +182,7 @@ def filter_target_leagues(
     # Étape 1 : essayer un match exact
     mask = df["league"].isin(target_leagues)
     matched_leagues = df.loc[mask, "league"].unique().tolist()
-    unmatched_targets = [l for l in target_leagues if l not in matched_leagues]
+    unmatched_targets = [lg for lg in target_leagues if lg not in matched_leagues]
 
     if unmatched_targets:
         logger.warning(
@@ -398,115 +397,147 @@ def handle_missing_values(df: pd.DataFrame) -> pd.DataFrame:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-def build_target_from_oracle(df: pd.DataFrame) -> dict[str, bool]:
+def compute_lec_debut_dates(df: pd.DataFrame) -> dict[str, "pd.Timestamp"]:
     """
-    Construit la target variable "promoted" directement depuis Oracle's Elixir.
+    Calcule la date du PREMIER match LEC de chaque joueur (= sa "promotion").
 
-    Logique simple mais efficace :
-      Si un joueur apparaît dans une ERL dans les données ET apparaît aussi
-      en LEC dans les données → promoted = True.
-
-    C'est la méthode de fallback si Leaguepedia n'est pas disponible.
-    Elle est moins précise (pas de temporalité fine) mais fonctionnelle.
+    C'est le pivot temporel de la target datée : on considère qu'un joueur est
+    "promu" à la date de son premier match LEC dans les données. Tout match ERL
+    antérieur à cette date (et dans l'horizon) devient un exemple positif ;
+    tout match ERL postérieur (ex-LEC relégué) reste négatif.
 
     Args:
-        df: DataFrame complet (incluant les données LEC)
+        df: DataFrame complet (incluant les lignes LEC), avec une colonne `date`.
 
     Returns:
-        Dict {playername: True/False}
+        Dict {playername: Timestamp du premier match LEC}. Vide si aucune donnée
+        LEC datable n'est disponible.
+    """
+    if "date" not in df.columns:
+        logger.warning("⚠️  Colonne 'date' absente — impossible de dater les promotions")
+        return {}
+
+    lec = df[df["league"] == TOP_LEAGUE].copy()
+    if lec.empty:
+        return {}
+
+    lec["_date_parsed"] = pd.to_datetime(lec["date"], errors="coerce")
+    lec = lec.dropna(subset=["_date_parsed"])
+    if lec.empty:
+        logger.warning("⚠️  Aucune date LEC exploitable après parsing")
+        return {}
+
+    debut_dates = lec.groupby("playername")["_date_parsed"].min().to_dict()
+    logger.info(f"📅 Dates de début LEC calculées pour {len(debut_dates)} joueurs")
+    return debut_dates
+
+
+def build_dated_target_from_oracle(
+    df: pd.DataFrame, horizon_months: int = PROMOTION_HORIZON_MONTHS
+) -> pd.Series:
+    """
+    Construit une target *datée* "promoted_to_lec" depuis Oracle's Elixir.
+
+    Un match ERL est positif si, et seulement si, le joueur débute en LEC
+    STRICTEMENT APRÈS ce match, et dans un horizon de `horizon_months` mois.
+
+    Pourquoi dater la target ? L'ancienne logique ("a joué en ERL et en LEC
+    un jour → promu") introduisait deux fuites temporelles :
+      1. Un ex-joueur LEC relégué en ERL était étiqueté "pépite" alors que sa
+         promotion est ANTÉRIEURE aux stats observées.
+      2. Sur le test set, on "prédisait" des promotions déjà survenues.
+    En exigeant que le début LEC soit dans le futur du match observé, ces deux
+    cas sont corrigés : le signal appris est bien "ce joueur VA être promu".
+
+    Args:
+        df: DataFrame complet (lignes ERL + LEC), avec une colonne `date`.
+        horizon_months: Fenêtre max (en mois) entre le match et le début LEC.
+
+    Returns:
+        pd.Series booléenne alignée sur df.index (True = match ERL pré-promotion).
     """
     erl_leagues = list(ERL_DIV1_LEAGUES.keys()) + list(ERL_DIV2_LEAGUES.keys())
+    erl_mask = df["league"].isin(erl_leagues)
 
-    # Joueurs qui ont joué en ERL
-    erl_players = set(
-        df[df["league"].isin(erl_leagues)]["playername"].unique()
+    debut_dates = compute_lec_debut_dates(df)
+    if not debut_dates:
+        logger.warning("⚠️  Target datée impossible (pas de dates LEC) → tout à False")
+        return pd.Series(False, index=df.index)
+
+    row_dates = pd.to_datetime(df["date"], errors="coerce")
+    debut_for_row = df["playername"].map(debut_dates)  # NaT si jamais promu
+    horizon_end = row_dates + pd.DateOffset(months=horizon_months)
+
+    # Positif ssi : ligne ERL ET début LEC connu ET début dans (match, match+horizon]
+    is_future_promotion = (
+        erl_mask
+        & debut_for_row.notna()
+        & row_dates.notna()
+        & (debut_for_row > row_dates)
+        & (debut_for_row <= horizon_end)
     )
+    target = is_future_promotion.fillna(False).astype(bool)
 
-    # Joueurs qui ont joué en LEC
-    lec_players = set(
-        df[df["league"] == TOP_LEAGUE]["playername"].unique()
-    )
-
-    # Intersection : joueurs qui ont fait les deux
-    promoted = erl_players & lec_players
-
-    # Créer le dict pour tous les joueurs ERL
-    promotions = {player: (player in promoted) for player in erl_players}
-
-    promoted_count = len(promoted)
+    n_pos_rows = int(target.sum())
+    n_pos_players = df.loc[target, "playername"].nunique()
+    n_erl_players = df.loc[erl_mask, "playername"].nunique()
     logger.info(
-        f"🎯 Target variable (Oracle's Elixir) : {promoted_count} joueurs promus "
-        f"sur {len(erl_players)} joueurs ERL ({promoted_count / max(len(erl_players), 1) * 100:.1f}%)"
+        f"🎯 Target datée (horizon {horizon_months} mois) : {n_pos_rows:,} matchs positifs, "
+        f"{n_pos_players} joueurs pré-promotion sur {n_erl_players} joueurs ERL"
     )
-
-    if promoted_count > 0:
-        logger.info(f"   Exemples de promus : {list(promoted)[:10]}")
-
-    return promotions
+    return target
 
 
-def add_target_variable(df: pd.DataFrame) -> pd.DataFrame:
+def add_target_variable(
+    df: pd.DataFrame, horizon_months: int = PROMOTION_HORIZON_MONTHS
+) -> pd.DataFrame:
     """
-    Ajoute la colonne target "promoted_to_lec" au DataFrame.
+    Ajoute la colonne target *datée* "promoted_to_lec" au DataFrame.
 
-    Stratégie en 2 étapes :
-      1. Essayer de charger les labels Leaguepedia (plus fiables)
-      2. Sinon, construire depuis Oracle's Elixir (fallback)
-      3. Merger les deux sources si les deux sont disponibles
+    La target est construite depuis les dates d'Oracle's Elixir (toujours
+    disponibles) : un match ERL est positif uniquement si le joueur débute en
+    LEC dans les `horizon_months` mois QUI SUIVENT le match. Voir
+    `build_dated_target_from_oracle` pour le détail et la justification.
 
-    La target est ajoutée uniquement aux joueurs ERL (pas aux joueurs LEC,
-    qui sont déjà au top).
+    Leaguepedia n'est utilisé qu'en cross-check informatif : n'exposant pas de
+    dates de transfert exploitables ici, il ne peut pas dater les promotions.
+    L'intégrer comme label ré-introduirait la fuite temporelle qu'on corrige,
+    on le limite donc à un rapport de couverture (best effort, souvent absent).
 
     Args:
-        df: DataFrame nettoyé
+        df: DataFrame nettoyé (lignes ERL + LEC), avec une colonne `date`.
+        horizon_months: Fenêtre max (en mois) entre le match et le début LEC.
 
     Returns:
-        DataFrame avec la colonne "promoted_to_lec"
+        DataFrame avec la colonne booléenne "promoted_to_lec".
     """
-    erl_leagues = list(ERL_DIV1_LEAGUES.keys()) + list(ERL_DIV2_LEAGUES.keys())
+    # Target datée depuis Oracle's Elixir
+    df["promoted_to_lec"] = build_dated_target_from_oracle(df, horizon_months)
 
-    # Source 1 : Oracle's Elixir (toujours disponible)
-    oracle_promotions = build_target_from_oracle(df)
-
-    # Source 2 : Leaguepedia (optionnel)
+    # Cross-check Leaguepedia (optionnel, informatif seulement)
     leaguepedia_data = load_career_data()
-    leaguepedia_promotions = {}
     if leaguepedia_data is not None:
         _, leaguepedia_promotions = leaguepedia_data
-        logger.info(
-            f"📚 Labels Leaguepedia chargés : {sum(1 for v in leaguepedia_promotions.values() if v)} promus"
-        )
-
-    # Fusion : Leaguepedia a priorité si disponible, sinon Oracle
-    merged_promotions = {**oracle_promotions}  # Copie d'Oracle
-
-    if leaguepedia_promotions:
-        for player, promoted in leaguepedia_promotions.items():
-            player_lower = player.lower().strip()
-            if player_lower in merged_promotions:
-                # Si Leaguepedia dit "promu" et Oracle non → Leaguepedia gagne
-                if promoted:
-                    merged_promotions[player_lower] = True
-
-        # Compter les ajouts de Leaguepedia
-        oracle_only = sum(1 for v in oracle_promotions.values() if v)
-        merged_total = sum(1 for v in merged_promotions.values() if v)
-        added = merged_total - oracle_only
-        if added > 0:
-            logger.info(f"   +{added} promus ajoutés grâce à Leaguepedia")
-
-    # Ajouter la colonne au DataFrame
-    # Note : on désactive le downcasting silencieux (deprecated dans pandas 2.x)
-    # pour éviter un FutureWarning lors du fillna(False)
-    promoted_series = df["playername"].map(merged_promotions)
-    df["promoted_to_lec"] = promoted_series.where(promoted_series.notna(), False).astype(bool)
+        lp_players = {
+            p.lower().strip() for p, v in leaguepedia_promotions.items() if v
+        }
+        if lp_players:
+            dated_players = set(df.loc[df["promoted_to_lec"], "playername"].unique())
+            confirmed = lp_players & dated_players
+            undatable = lp_players - dated_players
+            logger.info(
+                f"📚 Cross-check Leaguepedia : {len(lp_players)} promus déclarés, "
+                f"{len(confirmed)} confirmés par la target datée, "
+                f"{len(undatable)} non datables (hors fenêtre ou hors données Oracle)"
+            )
 
     # Stats
+    erl_leagues = list(ERL_DIV1_LEAGUES.keys()) + list(ERL_DIV2_LEAGUES.keys())
     erl_mask = df["league"].isin(erl_leagues)
-    promoted_rows = df.loc[erl_mask, "promoted_to_lec"].sum()
-    total_rows = erl_mask.sum()
+    promoted_rows = int(df.loc[erl_mask, "promoted_to_lec"].sum())
+    total_rows = int(erl_mask.sum())
     logger.info(
-        f"📊 Target variable ajoutée : {int(promoted_rows):,} lignes 'promoted' "
+        f"📊 Target datée ajoutée : {promoted_rows:,} lignes 'promoted' "
         f"sur {total_rows:,} lignes ERL"
     )
 
@@ -553,7 +584,7 @@ def validate_dataset(df: pd.DataFrame) -> bool:
 
     # 3. Ligues attendues
     leagues = set(df["league"].unique())
-    erl_present = [l for l in ERL_DIV1_LEAGUES if l in leagues]
+    erl_present = [lg for lg in ERL_DIV1_LEAGUES if lg in leagues]
     logger.info(f"   ✅ ERLs Div 1 présentes : {erl_present}")
 
     if TOP_LEAGUE in leagues:
@@ -569,7 +600,6 @@ def validate_dataset(df: pd.DataFrame) -> bool:
     # 5. Target variable
     if "promoted_to_lec" in df.columns:
         n_promoted = df["promoted_to_lec"].sum()
-        n_total = len(df["playername"].unique())
         logger.info(
             f"   ✅ Target : {int(n_promoted):,} lignes promoted "
             f"({n_promoted / len(df) * 100:.2f}% du dataset)"

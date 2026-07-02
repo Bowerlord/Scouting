@@ -10,12 +10,12 @@ Usage :
     )
 """
 
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
-import numpy as np
-import pandas as pd
 from pathlib import Path
 
+import matplotlib.patches as mpatches
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 
 # ── Style global ──────────────────────────────────────────────────────────────
 
@@ -78,7 +78,6 @@ def bar_horizontal(
         max_val          : Valeur maximale de l'axe x
     """
     ax.set_facecolor(PANEL_BG)
-    y_pos = range(len(labels) - 1, -1, -1)
 
     for i, (label, val) in enumerate(zip(labels, values)):
         y = len(labels) - 1 - i

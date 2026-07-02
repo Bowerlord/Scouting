@@ -95,6 +95,16 @@ ALL_TARGET_LEAGUES = list(ERL_DIV1_LEAGUES.keys()) + list(ERL_DIV2_LEAGUES.keys(
 TRAIN_YEARS = [2024]
 TEST_YEARS = [2025]
 
+# Horizon de la target datée (en mois).
+# Un match ERL est étiqueté "promoted_to_lec=True" uniquement si le joueur
+# débute en LEC APRÈS ce match, et dans cet horizon. Cela évite deux fuites :
+#   1. Un ex-joueur LEC relégué en ERL n'est PAS une pépite (sa promotion est
+#      passée) → sa promotion étant antérieure à ses matchs ERL, il reste négatif.
+#   2. On ne "prédit" pas une promotion déjà survenue au moment du match observé.
+# 18 mois capture les promotions "de la saison suivante" (ex: scouté en Summer,
+# promu au Spring d'après) sans étiqueter positivement des splits trop lointains.
+PROMOTION_HORIZON_MONTHS = 18
+
 # Colonnes clés d'Oracle's Elixir pour les features
 # (liste non exhaustive, sera affinée en Phase 4)
 KEY_COLUMNS = [
