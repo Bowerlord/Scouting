@@ -9,30 +9,30 @@ Génère 5 graphiques sauvegardés dans reports/figures/ :
   5. Leaderboard Top 30 — scatter plot
 """
 
-import io
 import json
 import sys
 import warnings
-from pathlib import Path
-
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
 import joblib
-import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
-import numpy as np
+import matplotlib.pyplot as plt
 import pandas as pd
-import seaborn as sns
-from sklearn.metrics import precision_recall_curve, average_precision_score
+from sklearn.metrics import average_precision_score, precision_recall_curve
 
 from src.config import (
-    MODELS_DIR, METRICS_DIR, FIGURES_DIR, PROCESSED_DATA_DIR, TRAIN_YEARS, TEST_YEARS
+    FIGURES_DIR,
+    METRICS_DIR,
+    MODELS_DIR,
+    TEST_YEARS,
+    TRAIN_YEARS,
 )
-from src.models.talent_scorer import (
-    FEATURE_COLS, TARGET_COL, load_features, make_out_of_time_split
-)
+from src.models.talent_scorer import FEATURE_COLS, load_features, make_out_of_time_split
 
 warnings.filterwarnings("ignore")
+
+# Force un encodage UTF-8 sur stdout pour les émojis des logs (notamment sous Windows)
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
 
 # ── Style global ─────────────────────────────────────────────────────────────
 plt.style.use("dark_background")
@@ -122,7 +122,8 @@ def plot_pr_curves(X_test, y_test, models):
                  f"(Out-of-Time : Train {TRAIN_YEARS} → Test {TEST_YEARS})",
                  fontsize=14, fontweight="bold", pad=15)
     ax.legend(fontsize=11, framealpha=0.2, loc="upper right")
-    ax.set_xlim(0, 1); ax.set_ylim(0, 1)
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
     ax.grid(True, alpha=0.3)
 
     fig.tight_layout()
@@ -228,8 +229,8 @@ def plot_score_distribution(scores_df):
     fig, ax = plt.subplots(figsize=(11, 6))
     fig.patch.set_facecolor("#0f172a")
 
-    promoted = scores_df[scores_df["promoted_to_lec"] == True]["talent_score"]
-    not_promoted = scores_df[scores_df["promoted_to_lec"] == False]["talent_score"]
+    promoted = scores_df[scores_df["promoted_to_lec"]]["talent_score"]
+    not_promoted = scores_df[not scores_df["promoted_to_lec"]]["talent_score"]
 
     ax.hist(not_promoted, bins=40, color=PALETTE["not_promoted"], alpha=0.75,
             label=f"Non-promus (n={len(not_promoted):,})", zorder=2)
@@ -273,8 +274,6 @@ def plot_leaderboard(scores_df):
         "NLC": "#8b5cf6", "TCL": "#10b981",
     }
 
-    y_pos = range(len(best) - 1, -1, -1)
-
     for i, (_, row) in enumerate(best.iterrows()):
         y = len(best) - 1 - i
         color = league_colors.get(row["league"], "#94a3b8")
@@ -294,7 +293,7 @@ def plot_leaderboard(scores_df):
                 va="center", ha="right", fontsize=9, fontweight="bold", color="white", zorder=4)
 
     # Légende ligues
-    patches = [mpatches.Patch(color=c, label=l) for l, c in league_colors.items()]
+    patches = [mpatches.Patch(color=c, label=lg) for lg, c in league_colors.items()]
     patches.append(mpatches.Patch(color="white", label="⭐ = Promu LEC confirmé"))
     ax.legend(handles=patches, fontsize=9, loc="lower right", framealpha=0.2, ncol=2)
 
@@ -349,7 +348,6 @@ def plot_league_leaderboards(scores_df):
             continue
 
         color = league_colors.get(league, "#94a3b8")
-        y_pos = range(len(df_league) - 1, -1, -1)
 
         for i, (_, row) in enumerate(df_league.iterrows()):
             y = len(df_league) - 1 - i

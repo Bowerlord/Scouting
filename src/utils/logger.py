@@ -13,9 +13,10 @@ Usage dans n'importe quel autre fichier :
     logger.info("Mon message")
 """
 
-import sys
 import os
+import sys
 from pathlib import Path
+
 from loguru import logger
 
 # ── Suppression du logger par défaut ─────────────────────────────────────────

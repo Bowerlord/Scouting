@@ -31,24 +31,22 @@ Usage :
   python -m src.data.cleaner
 """
 
-import pandas as pd
+
 import numpy as np
-from pathlib import Path
+import pandas as pd
 
 from src.config import (
-    RAW_DATA_DIR,
-    INTERIM_DATA_DIR,
-    EXTERNAL_DATA_DIR,
-    DATA_YEARS,
     ALL_TARGET_LEAGUES,
+    DATA_YEARS,
     ERL_DIV1_LEAGUES,
     ERL_DIV2_LEAGUES,
-    TOP_LEAGUE,
+    INTERIM_DATA_DIR,
     KEY_COLUMNS,
+    RAW_DATA_DIR,
+    TOP_LEAGUE,
 )
-from src.utils.logger import logger
 from src.data.leaguepedia import load_career_data
-
+from src.utils.logger import logger
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Chargement des données brutes
@@ -183,7 +181,7 @@ def filter_target_leagues(
     # Étape 1 : essayer un match exact
     mask = df["league"].isin(target_leagues)
     matched_leagues = df.loc[mask, "league"].unique().tolist()
-    unmatched_targets = [l for l in target_leagues if l not in matched_leagues]
+    unmatched_targets = [lg for lg in target_leagues if lg not in matched_leagues]
 
     if unmatched_targets:
         logger.warning(
@@ -553,7 +551,7 @@ def validate_dataset(df: pd.DataFrame) -> bool:
 
     # 3. Ligues attendues
     leagues = set(df["league"].unique())
-    erl_present = [l for l in ERL_DIV1_LEAGUES if l in leagues]
+    erl_present = [lg for lg in ERL_DIV1_LEAGUES if lg in leagues]
     logger.info(f"   ✅ ERLs Div 1 présentes : {erl_present}")
 
     if TOP_LEAGUE in leagues:
@@ -569,7 +567,6 @@ def validate_dataset(df: pd.DataFrame) -> bool:
     # 5. Target variable
     if "promoted_to_lec" in df.columns:
         n_promoted = df["promoted_to_lec"].sum()
-        n_total = len(df["playername"].unique())
         logger.info(
             f"   ✅ Target : {int(n_promoted):,} lignes promoted "
             f"({n_promoted / len(df) * 100:.2f}% du dataset)"

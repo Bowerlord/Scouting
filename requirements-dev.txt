@@ -1,0 +1,18 @@
+# ══════════════════════════════════════════════════════════════════════════════
+# KCorp Scouting Tool — Dépendances de développement
+# ══════════════════════════════════════════════════════════════════════════════
+# Outils de test, lint et formatage. Utilisés en local et par la CI GitHub Actions.
+# Installation : pip install -r requirements-dev.txt
+
+-r requirements.txt
+
+# --- Tests ---
+pytest>=7.0
+
+# --- Qualité du code ---
+black>=23.0
+ruff>=0.1
+
+# --- Notebooks ---
+ipykernel>=6.0
+jupyter>=1.0

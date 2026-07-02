@@ -8,19 +8,21 @@ Figures générées :
   09_elbow_silhouette.png  — Courbes inertie + silhouette pour chaque position
 """
 
-import io
 import json
 import sys
 import warnings
 from pathlib import Path
 
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
-warnings.filterwarnings("ignore")
-
-import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+
+warnings.filterwarnings("ignore")
+
+# Force un encodage UTF-8 sur stdout pour les émojis des logs (notamment sous Windows)
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
 
 # Paths
 ROOT = Path(__file__).resolve().parents[2]
@@ -165,7 +167,7 @@ def plot_cluster_profiles(profiles):
             row_labels.append(f"C{p['cluster']}  {promo_pct:.0f}%↑")
 
         mat = np.array(data)
-        im = ax.imshow(mat, aspect="auto", cmap="RdYlGn", vmin=-vmax, vmax=vmax)
+        ax.imshow(mat, aspect="auto", cmap="RdYlGn", vmin=-vmax, vmax=vmax)
 
         ax.set_xticks(range(len(feat_keys)))
         ax.set_xticklabels([feature_short[f] for f in feat_keys], rotation=45, ha="right", fontsize=7.5)

@@ -33,19 +33,19 @@ Pourquoi un cache local ?
 """
 
 import time
-import requests
 from pathlib import Path
+
+import requests
 
 from src.config import (
     DATA_YEARS,
-    GOOGLE_DRIVE_IDS,
     GDRIVE_DOWNLOAD_URL,
-    RAW_DATA_DIR,
+    GOOGLE_DRIVE_IDS,
     MAX_RETRIES,
+    RAW_DATA_DIR,
     RETRY_DELAY,
 )
 from src.utils.logger import logger
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Fonctions utilitaires
@@ -123,7 +123,6 @@ def _download_from_gdrive(file_id: str, destination: Path) -> bool:
 
     # Écriture en streaming : on lit le fichier par chunks de 32 Ko
     # au lieu de tout charger en mémoire (les CSV font ~150+ Mo)
-    total_size = int(response.headers.get("content-length", 0))
     downloaded = 0
 
     with open(destination, "wb") as f:
@@ -262,7 +261,7 @@ def download_all(
 
     results = {}
     logger.info(f"{'='*60}")
-    logger.info(f"📥 ORACLE'S ELIXIR — Téléchargement des données")
+    logger.info("📥 ORACLE'S ELIXIR — Téléchargement des données")
     logger.info(f"   Années : {years}")
     logger.info(f"   Destination : {RAW_DATA_DIR}")
     logger.info(f"{'='*60}")

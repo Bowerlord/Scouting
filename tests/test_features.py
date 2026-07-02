@@ -8,11 +8,10 @@ On teste :
   - Pas de fuites de données entre ligues (Z-scores intra-ligue)
 """
 
+
 import numpy as np
 import pandas as pd
 import pytest
-from unittest.mock import patch
-
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -50,7 +49,7 @@ class TestZScores:
 
     def test_zscore_mean_near_zero(self, sample_df):
         """La moyenne des Z-scores par groupe doit être ≈ 0.
-        
+
         Note : avec des groupes de taille 1 (std=NaN), on remplace par 0.
         Le seuil est relaxé à 0.5 car la fixture est entièrement aléatoire
         et certains petits groupes peuvent avoir des moyennes légèrement non nulles.
@@ -87,7 +86,7 @@ class TestZScores:
 
     def test_zscore_handles_single_player_group(self, sample_df):
         """Un groupe avec un seul joueur doit avoir un Z-score = 0 après fillna.
-        
+
         Un groupe de taille 1 produit std=NaN (division par 0 même avec +1e-8
         car x.std() retourne NaN pour n=1 en pandas). La pipeline de feature
         engineering doit donc appliquer un fillna(0) après le Z-score — c'est
