@@ -2,35 +2,35 @@
   "comparison": [
     {
       "model_name": "Logistic Regression (baseline)",
-      "pr_auc": 0.2557,
-      "roc_auc": 0.7293,
-      "precision_at_104": 0.2404,
-      "recall_at_104": 0.2404,
-      "k": 104
+      "pr_auc": 0.1325,
+      "roc_auc": 0.7093,
+      "precision_at_61": 0.1311,
+      "recall_at_61": 0.1311,
+      "k": 61
     },
     {
       "model_name": "Random Forest",
-      "pr_auc": 0.1903,
-      "roc_auc": 0.6952,
-      "precision_at_104": 0.2115,
-      "recall_at_104": 0.2115,
-      "k": 104
+      "pr_auc": 0.1282,
+      "roc_auc": 0.7106,
+      "precision_at_61": 0.1148,
+      "recall_at_61": 0.1148,
+      "k": 61
     },
     {
       "model_name": "Random Forest (tuned)",
-      "pr_auc": 0.182,
-      "roc_auc": 0.6886,
-      "precision_at_104": 0.1923,
-      "recall_at_104": 0.1923,
-      "k": 104
+      "pr_auc": 0.1161,
+      "roc_auc": 0.6757,
+      "precision_at_61": 0.1475,
+      "recall_at_61": 0.1475,
+      "k": 61
     },
     {
       "model_name": "XGBoost",
-      "pr_auc": 0.1652,
-      "roc_auc": 0.6606,
-      "precision_at_104": 0.1346,
-      "recall_at_104": 0.1346,
-      "k": 104
+      "pr_auc": 0.0899,
+      "roc_auc": 0.6096,
+      "precision_at_61": 0.0984,
+      "recall_at_61": 0.0984,
+      "k": 61
     }
   ],
   "best_model": "Logistic Regression (baseline)",
@@ -58,12 +58,12 @@
     "champion_pool_size"
   ],
   "rf_tuned_params": {
-    "n_estimators": 100,
+    "n_estimators": 500,
     "min_samples_split": 10,
-    "min_samples_leaf": 4,
+    "min_samples_leaf": 8,
     "max_features": 0.5,
-    "max_depth": 6,
+    "max_depth": 15,
     "class_weight": "balanced"
   },
-  "rf_tuned_cv_pr_auc": NaN
+  "rf_tuned_cv_pr_auc": 0.5265
 }
