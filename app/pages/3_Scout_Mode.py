@@ -83,23 +83,25 @@ except FileNotFoundError:
 # Merge talent scores + clustering
 # ══════════════════════════════════════════════════════════════════════════════
 
-# On joint sur playername pour ajouter cluster et archétype au DataFrame principal.
-# suffixes=("", "_cl") évite les doublons si position est dans les deux DataFrames.
+# On joint sur playername + position + année + split (quand disponibles) pour
+# associer chaque ligne joueur/saison à SON cluster, plutôt que sur playername
+# seul : un joueur a plusieurs lignes (une par split/année), et un merge sur
+# playername seul créerait un produit cartésien entre ses lignes de score et
+# ses lignes de clustering (doublons + mauvaises associations cluster/saison).
 if clustering_available and not df_clusters.empty and "playername" in df_clusters.columns:
-    cluster_cols = [c for c in ["playername", "position", "cluster", "archetype"]
-                    if c in df_clusters.columns]
+    merge_keys = [k for k in ["playername", "position", "_source_year", "split"]
+                  if k in df_talent.columns and k in df_clusters.columns]
+    cluster_cols = merge_keys + [c for c in ["cluster", "archetype"]
+                                  if c in df_clusters.columns]
     df = df_talent.merge(
         df_clusters[cluster_cols],
-        on="playername",
+        on=merge_keys,
         how="left",
-        suffixes=("", "_cl"),
     )
-    # Supprimer la colonne position dupliquée si présente
-    if "position_cl" in df.columns:
-        df.drop(columns=["position_cl"], inplace=True)
 else:
     df = df_talent.copy()
     df["cluster"] = pd.NA
+    df["archetype"] = pd.NA
 
 # ══════════════════════════════════════════════════════════════════════════════
 # SECTION 1 — Shortlist par critères

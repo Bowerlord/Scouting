@@ -270,6 +270,7 @@ def run_clustering_pipeline():
     df["cluster_position"] = -1
     df["umap_x"] = np.nan
     df["umap_y"] = np.nan
+    df["archetype"] = pd.NA
 
     for pos in POSITIONS:
         mask = df["position"] == pos
@@ -285,6 +286,10 @@ def run_clustering_pipeline():
         df.loc[mask, "cluster_position"] = res["labels"]
         df.loc[mask, "umap_x"] = res["embedding"][:, 0]
         df.loc[mask, "umap_y"] = res["embedding"][:, 1]
+
+        # Archétype par ligne : dérivé du profil du cluster assigné
+        archetype_map = {p["cluster"]: p["archetype"] for p in res["profiles"]}
+        df.loc[mask, "archetype"] = df.loc[mask, "cluster_position"].map(archetype_map)
 
         # Ligne de résumé
         best_cluster = max(res["profiles"], key=lambda p: p["promo_rate"])
@@ -318,10 +323,14 @@ def run_clustering_pipeline():
 
     # ── Sauvegarde ────────────────────────────────────────────────────────────
     # Dataset enrichi
+    # "cluster" est un alias de "cluster_position" : c'est le nom attendu par le
+    # dashboard Streamlit (app/utils/data_loader.py), tandis que "cluster_position"
+    # reste nécessaire pour src/visualization/clustering_viz.py.
+    df["cluster"] = df["cluster_position"]
     report_cols = [
         "playername", "league", "_source_year", "split", "position", "teamname",
-        "cluster_position", "umap_x", "umap_y", "promoted_to_lec",
-        "win_rate", "games_played", "dpm_zscore", "cspm_zscore",
+        "cluster_position", "cluster", "archetype", "umap_x", "umap_y",
+        "promoted_to_lec", "win_rate", "games_played", "dpm_zscore", "cspm_zscore",
         "golddiffat15_zscore", "win_rate_zscore",
     ]
     report_cols = [c for c in report_cols if c in df.columns]
