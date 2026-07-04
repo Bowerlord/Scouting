@@ -129,7 +129,9 @@ Le fichier généré est `data/processed/features_players.csv` (2 405 lignes, 31
 
 3. **PR-AUC comme métrique principale** : Avec ~8% de joueurs promus, l'accuracy est trompeuse (un modèle naïf "tout-0" ferait 92%). La PR-AUC se concentre sur la qualité du ranking des positifs.
 
-4. **Trois modèles comparés** : LR (baseline) → RF → XGBoost. Le RF a été optimisé avec `RandomizedSearchCV` (60 itérations, 5-fold stratifié).
+4. **Trois modèles comparés** : LR (baseline) → RF → XGBoost. Le RF a été optimisé avec `RandomizedSearchCV` (60 itérations, `StratifiedGroupKFold` 5-fold **groupé par joueur** : un même joueur ayant plusieurs lignes saison/split, le groupement garantit qu'il n'apparaît jamais à la fois en train et en validation d'un fold — sans lui, la PR-AUC de CV serait artificiellement gonflée).
+
+5. **Calibration des probabilités (Platt scaling)** : les probabilités brutes des modèles sont mal calibrées — un score de 80 ne signifie pas « 80 % de chances de promotion ». Le meilleur modèle est enveloppé dans `CalibratedClassifierCV(method="sigmoid")` : le Brier score sur le test passe de **0.161 à 0.062**, sans changer le classement (transformation monotone). Le CSV expose aussi `score_percentile` — le rang percentile du joueur **au sein de sa position** (« top 3 % des mids ERL »), plus parlant pour un scout qu'une probabilité.
 
 🔧 **Ce qu'on a fait** :
 - Split : **739 lignes train** (2024) | **977 lignes test** (2025), déséquilibre géré par `class_weight='balanced'`
@@ -142,18 +144,18 @@ Le fichier généré est `data/processed/features_players.csv` (2 405 lignes, 31
 2. **Dominance de la LFL** : La LFL représente ~18/30 dans le leaderboard global. Un leaderboard par ligue a été ajouté.
 3. **`games_played` très influent (24-32%)** : Conservé délibérément — c'est un signal réel (titulaire = essentiel à l'équipe).
 
-✅ **Résultat** :
+✅ **Résultat** (avec target datée + CV groupée — chiffres plus bas que les premières itérations, mais honnêtes : les anciennes métriques bénéficiaient de la fuite temporelle) :
 
-| Modèle | PR-AUC | ROC-AUC | Precision@104 |
+| Modèle | PR-AUC | ROC-AUC | Precision@61 |
 |---|---|---|---|
-| **Logistic Regression** 🏆 | **0.2557** | 0.729 | 24.0% |
-| Random Forest | 0.1903 | 0.695 | 21.2% |
-| RF (tuned) | 0.1820 | 0.689 | 19.2% |
-| XGBoost | 0.1652 | 0.661 | 13.5% |
+| **Logistic Regression** 🏆 | **0.1325** | 0.709 | 13.1% |
+| Random Forest | 0.1282 | 0.711 | 11.5% |
+| RF (tuned) | 0.1181 | 0.674 | 13.1% |
+| XGBoost | 0.0899 | 0.610 | 9.8% |
 
-- **Modèle retenu : Logistic Regression** — interprétable et le plus performant
+- **Modèle retenu : Logistic Regression** (calibrée sigmoïde) — interprétable et la plus performante ; baseline aléatoire = 6.2% de positifs, la LR fait ~2× mieux
 - **2 005 joueurs ERL scorés** dans `reports/metrics/talent_scores_players.csv`
-- Médiane promus : **58/100** vs médiane non-promus : **21/100** — bon pouvoir de séparation
+- Médiane promus : **13.4/100** vs médiane non-promus : **2.4/100** — bon pouvoir de séparation (échelle calibrée : les probabilités absolues restent basses car seuls ~6 % des joueurs montent)
 
 ### Phase 6 — Playstyle Clustering ✅
 
@@ -412,7 +414,8 @@ Le dashboard ne relance jamais le pipeline ML : il lit des snapshots figés dans
 - [x] ⚙️ Intégration continue (CI) : lint + tests automatiques
 - [ ] 🎮 Intégration des données Solo Queue (Riot API)
 - [ ] 📈 Modèle temporel (LSTM) pour capturer la progression
-- [ ] 📊 Calibration du Talent Score (probabilités → percentiles de rang)
+- [x] 📊 Calibration du Talent Score + percentiles de rang par position *(voir Phase 5)*
+- [x] 🧪 Cross-validation groupée par joueur (StratifiedGroupKFold) *(voir Phase 5)*
 - [ ] 🌍 Extension aux ERLs mineures (Benelux, Italie, etc.)
 
 ---

@@ -24,7 +24,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import plotly.express as px
 import streamlit as st
-
 from utils.data_loader import load_talent_scores
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -78,13 +77,13 @@ with st.sidebar:
         index=0,
     )
 
+    # talent_score est sur une échelle 0-100 (probabilité calibrée × 100)
     min_score = st.slider(
         "Score minimum",
-        min_value=0.0,
-        max_value=1.0,
-        value=0.0,
-        step=0.01,
-        format="%.2f",
+        min_value=0,
+        max_value=100,
+        value=0,
+        step=1,
     )
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -115,7 +114,7 @@ st.caption(f"{len(filtered)} joueur(s) affiché(s) après filtrage")
 # Colonnes préférées (on garde seulement celles présentes dans le CSV)
 display_cols = [
     "playername", "position", "league", "teamname",
-    "_source_year", "split", "talent_score",
+    "_source_year", "split", "talent_score", "score_percentile",
     "win_rate", "games_played", "champion_pool_size",
     "promoted_to_lec",
 ]
@@ -129,7 +128,10 @@ display_df["promoted_to_lec"] = display_df["promoted_to_lec"].apply(
 )
 
 if "talent_score" in display_df.columns:
-    display_df["talent_score"] = display_df["talent_score"].round(4)
+    display_df["talent_score"] = display_df["talent_score"].round(1)
+
+if "score_percentile" in display_df.columns:
+    display_df["score_percentile"] = display_df["score_percentile"].round(1)
 
 if "win_rate" in display_df.columns:
     display_df["win_rate"] = display_df["win_rate"].round(3)
@@ -147,8 +149,13 @@ st.dataframe(
         "talent_score": st.column_config.ProgressColumn(
             "Talent Score",
             min_value=0.0,
-            max_value=1.0,
-            format="%.4f",
+            max_value=100.0,
+            format="%.1f",
+        ),
+        "score_percentile": st.column_config.NumberColumn(
+            "Percentile (pos.)",
+            format="%.1f",
+            help="Rang percentile du joueur au sein de sa position (100 = meilleur).",
         ),
         "win_rate": st.column_config.NumberColumn("Win Rate", format="%.3f"),
         "games_played": st.column_config.NumberColumn("Games"),

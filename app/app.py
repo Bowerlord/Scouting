@@ -27,7 +27,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 import streamlit as st
-
 from utils.data_loader import load_talent_scores
 
 # ══════════════════════════════════════════════════════════════════════════════
