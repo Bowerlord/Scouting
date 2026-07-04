@@ -29,9 +29,10 @@ jobs:
           cache: pip
 
       - name: Installation des dépendances
-        # torch/shap sont volumineux et inutiles pour lint + tests unitaires ;
-        # on installe uniquement les dépendances effectivement importées par la
-        # suite de tests : test_models → src.models.clusterer (joblib, loguru) ;
+        # torch/shap/xgboost sont volumineux et inutiles pour lint + tests
+        # unitaires ; on installe uniquement les dépendances effectivement
+        # importées par la suite de tests : test_models → src.models.clusterer
+        # et src.models.talent_scorer (xgboost y est un import optionnel) ;
         # test_features → src.data.cleaner → src.data.leaguepedia (requests).
         # On garde la CI rapide et fiable. umap-learn est optionnel (test skippé).
         run: |

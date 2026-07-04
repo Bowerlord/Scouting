@@ -35,7 +35,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import pandas as pd
 import plotly.express as px
 import streamlit as st
-
 from utils.data_loader import (
     get_archetype,
     list_archetypes,
@@ -140,13 +139,13 @@ with col_f3:
     )
 
 with col_f4:
+    # talent_score est sur une échelle 0-100 (probabilité calibrée × 100)
     sel_min_score = st.slider(
         "Score minimum",
-        min_value=0.0,
-        max_value=1.0,
-        value=0.3,
-        step=0.01,
-        format="%.2f",
+        min_value=0,
+        max_value=100,
+        value=30,
+        step=1,
         key="sl_score",
     )
 
@@ -186,7 +185,7 @@ st.caption(f"{len(shortlist)} joueur(s) dans la shortlist")
 
 sl_cols = [c for c in [
     "playername", "position", "league", "teamname",
-    "_source_year", "split", "talent_score",
+    "_source_year", "split", "talent_score", "score_percentile",
     "win_rate", "games_played", "champion_pool_size",
     "promoted_to_lec", "cluster",
 ] if c in shortlist.columns]
@@ -198,7 +197,9 @@ if "promoted_to_lec" in sl_display.columns:
         lambda x: "✅" if x else "❌"
     )
 if "talent_score" in sl_display.columns:
-    sl_display["talent_score"] = sl_display["talent_score"].round(4)
+    sl_display["talent_score"] = sl_display["talent_score"].round(1)
+if "score_percentile" in sl_display.columns:
+    sl_display["score_percentile"] = sl_display["score_percentile"].round(1)
 if "win_rate" in sl_display.columns:
     sl_display["win_rate"] = sl_display["win_rate"].round(3)
 
@@ -213,7 +214,12 @@ st.dataframe(
         "_source_year": st.column_config.NumberColumn("Année", format="%d"),
         "split": st.column_config.TextColumn("Split"),
         "talent_score": st.column_config.ProgressColumn(
-            "Talent Score", min_value=0.0, max_value=1.0, format="%.4f"
+            "Talent Score", min_value=0.0, max_value=100.0, format="%.1f"
+        ),
+        "score_percentile": st.column_config.NumberColumn(
+            "Percentile (pos.)",
+            format="%.1f",
+            help="Rang percentile du joueur au sein de sa position (100 = meilleur).",
         ),
         "win_rate": st.column_config.NumberColumn("Win Rate", format="%.3f"),
         "games_played": st.column_config.NumberColumn("Games"),
@@ -260,7 +266,7 @@ else:
             st.info(
                 f"**{ref_player}** · {ref_position.upper()} · "
                 f"Cluster #{ref_cluster if pd.notna(ref_cluster) else 'N/A'} · "
-                f"Talent Score : {ref.get('talent_score', 0):.4f}"
+                f"Talent Score : {ref.get('talent_score', 0):.1f}/100"
             )
 
             if pd.isna(ref_cluster):
@@ -283,7 +289,8 @@ else:
 
                 sim_cols = [c for c in [
                     "playername", "league", "teamname", "_source_year", "split",
-                    "talent_score", "win_rate", "games_played", "promoted_to_lec",
+                    "talent_score", "score_percentile", "win_rate", "games_played",
+                    "promoted_to_lec",
                 ] if c in similar.columns]
 
                 sim_display = similar[sim_cols].copy()
@@ -293,7 +300,9 @@ else:
                         lambda x: "✅" if x else "❌"
                     )
                 if "talent_score" in sim_display.columns:
-                    sim_display["talent_score"] = sim_display["talent_score"].round(4)
+                    sim_display["talent_score"] = sim_display["talent_score"].round(1)
+                if "score_percentile" in sim_display.columns:
+                    sim_display["score_percentile"] = sim_display["score_percentile"].round(1)
                 if "win_rate" in sim_display.columns:
                     sim_display["win_rate"] = sim_display["win_rate"].round(3)
 
@@ -304,7 +313,12 @@ else:
                         "playername": st.column_config.TextColumn("Joueur"),
                         "_source_year": st.column_config.NumberColumn("Année", format="%d"),
                         "talent_score": st.column_config.ProgressColumn(
-                            "Talent Score", min_value=0.0, max_value=1.0, format="%.4f"
+                            "Talent Score", min_value=0.0, max_value=100.0, format="%.1f"
+                        ),
+                        "score_percentile": st.column_config.NumberColumn(
+                            "Percentile (pos.)",
+                            format="%.1f",
+                            help="Rang percentile au sein de la position (100 = meilleur).",
                         ),
                         "win_rate": st.column_config.NumberColumn("Win Rate", format="%.3f"),
                         "promoted_to_lec": st.column_config.TextColumn("Promu LEC"),
@@ -344,7 +358,7 @@ else:
                         size="talent_score",
                         size_max=25,
                         hover_name="_marker",
-                        hover_data={"talent_score": ":.4f", "_marker": False},
+                        hover_data={"talent_score": ":.1f", "_marker": False},
                         title=(
                             f"Joueurs similaires à {ref_player} "
                             f"— cluster #{int(ref_cluster)} / {ref_position.upper()}"

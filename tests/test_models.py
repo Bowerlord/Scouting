@@ -202,6 +202,63 @@ class TestClustering:
             pytest.skip("umap-learn non installé, test UMAP ignoré")
 
 
+# ── Tests Scoring (percentiles + CV groupée) ──────────────────────────────────
+
+class TestScoringOutputs:
+
+    def test_score_percentile_range_and_max(self, synthetic_erl_dataset):
+        """score_percentile doit être dans (0, 100] avec un max de 100 par position."""
+        from src.models.talent_scorer import score_all_players
+        df = synthetic_erl_dataset
+        train = df[df["_source_year"] == 2024]
+        model = LogisticRegression(class_weight="balanced", max_iter=500, random_state=42)
+        model.fit(train[FEATURE_COLS].fillna(0), train["promoted_to_lec"])
+
+        scores = score_all_players(model, df, FEATURE_COLS)
+
+        assert "score_percentile" in scores.columns, "Colonne score_percentile absente"
+        pct = scores["score_percentile"]
+        assert (pct > 0).all() and (pct <= 100).all(), \
+            f"Percentiles hors (0, 100] : min={pct.min():.2f}, max={pct.max():.2f}"
+        # Le meilleur joueur de chaque position doit être au percentile 100
+        per_pos_max = scores.groupby("position")["score_percentile"].max()
+        assert np.allclose(per_pos_max, 100.0), \
+            f"Max percentile par position != 100 : {per_pos_max.to_dict()}"
+
+    def test_talent_score_scale_0_100(self, synthetic_erl_dataset):
+        """talent_score doit être sur une échelle 0-100 (proba × 100)."""
+        from src.models.talent_scorer import score_all_players
+        df = synthetic_erl_dataset
+        train = df[df["_source_year"] == 2024]
+        model = LogisticRegression(class_weight="balanced", max_iter=500, random_state=42)
+        model.fit(train[FEATURE_COLS].fillna(0), train["promoted_to_lec"])
+
+        scores = score_all_players(model, df, FEATURE_COLS)
+        ts = scores["talent_score"]
+        assert (ts >= 0).all() and (ts <= 100).all(), \
+            f"talent_score hors [0, 100] : min={ts.min():.2f}, max={ts.max():.2f}"
+
+    def test_grouped_cv_no_player_leakage(self, synthetic_erl_dataset):
+        """Avec StratifiedGroupKFold, un joueur (groupe) ne doit jamais être
+        à la fois en train et en validation d'un même fold — c'est la garantie
+        exploitée par tune_random_forest pour éviter la fuite par joueur."""
+        from sklearn.model_selection import StratifiedGroupKFold
+        df = synthetic_erl_dataset.copy()
+        # Simuler des joueurs multi-saisons : 6 lignes par joueur
+        df["playername"] = [f"p{i % 50}" for i in range(len(df))]
+
+        X = df[FEATURE_COLS].fillna(0)
+        y = df["promoted_to_lec"]
+        groups = df["playername"]
+
+        cv = StratifiedGroupKFold(n_splits=3, shuffle=True, random_state=42)
+        for train_idx, val_idx in cv.split(X, y, groups=groups):
+            train_players = set(groups.iloc[train_idx])
+            val_players = set(groups.iloc[val_idx])
+            overlap = train_players & val_players
+            assert not overlap, f"Joueur(s) en train ET validation : {overlap}"
+
+
 # ── Tests Similarity Search ───────────────────────────────────────────────────
 
 class TestSimilaritySearch:

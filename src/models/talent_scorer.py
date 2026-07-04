@@ -28,14 +28,25 @@ import warnings
 import joblib
 import numpy as np
 import pandas as pd
-import xgboost as xgb
+
+# xgboost est optionnel : la CI minimale ne l'installe pas (lourd), et les
+# tests n'importent de ce module que score_all_players / tune_random_forest.
+# Le pipeline complet (run_talent_scoring_pipeline) le requiert, lui.
+try:
+    import xgboost as xgb
+except ImportError:
+    xgb = None
+
+from sklearn.base import clone
+from sklearn.calibration import CalibratedClassifierCV
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
     average_precision_score,
+    brier_score_loss,
     roc_auc_score,
 )
-from sklearn.model_selection import RandomizedSearchCV, StratifiedKFold
+from sklearn.model_selection import RandomizedSearchCV, StratifiedGroupKFold
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
@@ -201,7 +212,7 @@ def build_random_forest() -> RandomForestClassifier:
     return RandomForestClassifier(**RF_PARAMS)
 
 
-def build_xgboost() -> xgb.XGBClassifier:
+def build_xgboost() -> "xgb.XGBClassifier":
     """
     Modèle avancé : XGBoost (Gradient Boosting).
 
@@ -213,6 +224,11 @@ def build_xgboost() -> xgb.XGBClassifier:
     scale_pos_weight sera calculé dynamiquement dans train_models() pour être
     exact (= ratio négatifs/positifs dans le train set).
     """
+    if xgb is None:
+        raise ImportError(
+            "xgboost n'est pas installé. `pip install xgboost` pour entraîner "
+            "le modèle XGBoost."
+        )
     params = XGB_PARAMS.copy()
     # Le scale_pos_weight sera mis à jour dynamiquement avant l'entraînement.
     # Note : use_label_encoder a été supprimé dans XGBoost >= 2.0 (le passer
@@ -333,10 +349,18 @@ def score_all_players(
 
     df_erl["talent_score"] = model.predict_proba(X)[:, 1] * 100
 
+    # Percentile de rang PAR POSITION : "top X% des mids ERL" parle plus à un
+    # scout qu'une probabilité — les probabilités restent basses en absolu
+    # (~6% de promus) même pour les meilleurs profils. rank(pct=True) donne
+    # une valeur dans (0, 1] ; ×100 → le meilleur joueur d'un poste est à 100.
+    df_erl["score_percentile"] = (
+        df_erl.groupby("position")["talent_score"].rank(pct=True) * 100
+    )
+
     # Sélection des colonnes pour le rapport final
     report_cols = [
         "playername", "league", "_source_year", "split", "position", "teamname",
-        "talent_score", "promoted_to_lec",
+        "talent_score", "score_percentile", "promoted_to_lec",
         "win_rate", "games_played", "champion_pool_size",
         "dpm_zscore", "cspm_zscore", "golddiffat15_zscore",
     ]
@@ -352,6 +376,7 @@ def score_all_players(
 def tune_random_forest(
     X_train: pd.DataFrame,
     y_train: pd.Series,
+    groups: pd.Series,
     n_iter: int = 60,
     cv_folds: int = 5,
 ) -> RandomForestClassifier:
@@ -361,9 +386,13 @@ def tune_random_forest(
     Stratégie :
       - RandomizedSearch plutôt que GridSearch : plus efficace sur un grand espace
         de paramètres (on teste n_iter combinaisons aléatoires au lieu de toutes)
-      - StratifiedKFold : préserve le ratio de classes dans chaque fold
-        (important car ~8% de positifs — sans stratification, certains folds
-        pourraient avoir 0 promus)
+      - StratifiedGroupKFold avec groups=playername : préserve le ratio de classes
+        dans chaque fold ET garantit qu'un même joueur (plusieurs lignes
+        saison/split) ne se retrouve jamais à la fois en train et en validation
+        d'un même fold. Sans ce groupement, le modèle "reconnaît" le joueur
+        d'un fold à l'autre et la PR-AUC de CV est artificiellement gonflée
+        (même famille de fuite que la target non datée). La PR-AUC de CV est
+        donc plus basse qu'avec un StratifiedKFold naïf — mais honnête.
       - Métrique : PR-AUC (average_precision_score)
         → Cohérent avec l'évaluation finale
 
@@ -379,6 +408,8 @@ def tune_random_forest(
     Args:
         X_train: Features d'entraînement
         y_train: Target d'entraînement
+        groups: Identifiant de groupe par ligne (playername) — un groupe
+                n'apparaît jamais dans deux folds différents
         n_iter: Nombre de combinaisons aléatoires à tester
         cv_folds: Nombre de folds pour la cross-validation
 
@@ -400,8 +431,9 @@ def tune_random_forest(
 
     base_rf = RandomForestClassifier(random_state=RANDOM_STATE, n_jobs=-1)
 
-    # StratifiedKFold pour respecter le ratio de classes à chaque fold
-    cv = StratifiedKFold(n_splits=cv_folds, shuffle=True, random_state=RANDOM_STATE)
+    # StratifiedGroupKFold : ratio de classes préservé + aucun joueur à cheval
+    # entre train et validation d'un même fold (voir docstring)
+    cv = StratifiedGroupKFold(n_splits=cv_folds, shuffle=True, random_state=RANDOM_STATE)
 
     # Scorer basé sur PR-AUC. On utilise la chaîne native de scikit-learn
     # ("average_precision") plutôt que make_scorer(needs_proba=True) : le paramètre
@@ -420,7 +452,7 @@ def tune_random_forest(
         verbose=1,
     )
 
-    search.fit(X_train, y_train)
+    search.fit(X_train, y_train, groups=groups)
 
     logger.info(f"\nMeilleure PR-AUC (CV) : {search.best_score_:.4f}")
     logger.info("Meilleurs hyperparamètres :")
@@ -461,10 +493,13 @@ def run_talent_scoring_pipeline():
     models = {
         "Logistic Regression (baseline)": build_logistic_regression(),
         "Random Forest": build_random_forest(),
-        "XGBoost": build_xgboost(),
     }
-    # Mise à jour du scale_pos_weight XGBoost avec la valeur calculée
-    models["XGBoost"].set_params(scale_pos_weight=scale_pos_weight)
+    if xgb is not None:
+        models["XGBoost"] = build_xgboost()
+        # Mise à jour du scale_pos_weight XGBoost avec la valeur calculée
+        models["XGBoost"].set_params(scale_pos_weight=scale_pos_weight)
+    else:
+        logger.warning("⚠️  xgboost non installé — modèle XGBoost ignoré.")
 
     # ── Entraînement des modèles de base ────────────────────────────────────
     logger.info("\n--- Modeles de base ---")
@@ -487,7 +522,7 @@ def run_talent_scoring_pipeline():
     # ── Tuning du Random Forest ──────────────────────────────────────────────
     logger.info("\n--- Tuning Random Forest (RandomizedSearchCV) ---")
     rf_tuned, best_rf_params, cv_score = tune_random_forest(
-        X_train, y_train, n_iter=60, cv_folds=5
+        X_train, y_train, groups=df_train["playername"], n_iter=60, cv_folds=5
     )
     trained_models["Random Forest (tuned)"] = rf_tuned
     rf_tuned_metrics = evaluate_model("Random Forest (tuned)", rf_tuned, X_test, y_test)
@@ -506,9 +541,29 @@ def run_talent_scoring_pipeline():
     logger.info(f"\n🏆 Meilleur modèle : {best_name}")
     logger.info(f"   PR-AUC : {results_df.iloc[0]['pr_auc']:.4f}")
 
+    # ── Calibration des probabilités (Platt scaling) ─────────────────────────
+    # Les probabilités brutes des modèles d'arbres (et dans une moindre mesure
+    # de la LR) sont mal calibrées : un score de 0.8 ne signifie pas "80% de
+    # chances de promotion". La calibration sigmoïde (Platt) apprend une
+    # transformation monotone des probabilités sur le train (CV interne 5-fold) :
+    #   - monotone → le CLASSEMENT des joueurs est inchangé (PR-AUC identique)
+    #   - sigmoid et non isotonic : avec ~50 positifs en train, l'isotonic
+    #     sur-apprendrait (elle estime une fonction en escalier libre)
+    # Le Brier score (erreur quadratique des probabilités, plus bas = mieux)
+    # mesure le gain de calibration sur le test set.
+    logger.info("\n--- Calibration du meilleur modèle (sigmoid / Platt) ---")
+    brier_raw = brier_score_loss(y_test, best_model.predict_proba(X_test)[:, 1])
+    calibrated_model = CalibratedClassifierCV(clone(best_model), method="sigmoid", cv=5)
+    calibrated_model.fit(X_train, y_train)
+    brier_calibrated = brier_score_loss(
+        y_test, calibrated_model.predict_proba(X_test)[:, 1]
+    )
+    logger.info(f"   Brier score (test) avant calibration : {brier_raw:.4f}")
+    logger.info(f"   Brier score (test) après calibration : {brier_calibrated:.4f}")
+
     # ── Scoring de tous les joueurs ERL ─────────────────────────────────────
     logger.info("\n🎯 Scoring de tous les joueurs ERL...")
-    all_scores = score_all_players(best_model, df, FEATURE_COLS)
+    all_scores = score_all_players(calibrated_model, df, FEATURE_COLS)
 
     logger.info("\n🏅 Top 10 Talents ERL :")
     logger.info(f"{'Rang':<5} {'Joueur':<20} {'Ligue':<10} {'Pos':<5} {'Score':<8} {'Promu?'}")
@@ -524,10 +579,10 @@ def run_talent_scoring_pipeline():
     METRICS_DIR.mkdir(parents=True, exist_ok=True)
     (MODELS_DIR.parent / "reports" / "figures").mkdir(parents=True, exist_ok=True)
 
-    # Meilleur modèle sérialisé
+    # Meilleur modèle sérialisé — version calibrée (celle utilisée pour le scoring)
     model_path = MODELS_DIR / "talent_scorer_best.pkl"
-    joblib.dump(best_model, model_path)
-    logger.info(f"\n💾 Modèle sauvegardé : {model_path}")
+    joblib.dump(calibrated_model, model_path)
+    logger.info(f"\n💾 Modèle calibré sauvegardé : {model_path}")
 
     # Tous les modèles (pour comparaison dans le notebook)
     for name, model in trained_models.items():
@@ -549,6 +604,9 @@ def run_talent_scoring_pipeline():
                 "features_used": available_features,
                 "rf_tuned_params": best_rf_params,
                 "rf_tuned_cv_pr_auc": round(cv_score, 4),
+                "calibration_method": "sigmoid",
+                "brier_score_raw": round(float(brier_raw), 4),
+                "brier_score_calibrated": round(float(brier_calibrated), 4),
             },
             f,
             indent=2,

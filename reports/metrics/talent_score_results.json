@@ -18,10 +18,10 @@
     },
     {
       "model_name": "Random Forest (tuned)",
-      "pr_auc": 0.1161,
-      "roc_auc": 0.6757,
-      "precision_at_61": 0.1475,
-      "recall_at_61": 0.1475,
+      "pr_auc": 0.1181,
+      "roc_auc": 0.6739,
+      "precision_at_61": 0.1311,
+      "recall_at_61": 0.1311,
       "k": 61
     },
     {
@@ -59,11 +59,14 @@
   ],
   "rf_tuned_params": {
     "n_estimators": 500,
-    "min_samples_split": 10,
+    "min_samples_split": 20,
     "min_samples_leaf": 8,
     "max_features": 0.5,
-    "max_depth": 15,
-    "class_weight": "balanced"
+    "max_depth": 10,
+    "class_weight": "balanced_subsample"
   },
-  "rf_tuned_cv_pr_auc": 0.5265
+  "rf_tuned_cv_pr_auc": 0.5302,
+  "calibration_method": "sigmoid",
+  "brier_score_raw": 0.1614,
+  "brier_score_calibrated": 0.0625
 }

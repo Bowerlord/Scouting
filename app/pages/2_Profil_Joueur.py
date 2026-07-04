@@ -29,7 +29,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
-
 from utils.data_loader import (
     get_archetype,
     load_cluster_profiles,
@@ -111,9 +110,14 @@ col1, col2, col3, col4, col5 = st.columns(5)
 with col1:
     st.metric(
         label="Talent Score",
-        value=f"{player.get('talent_score', 0):.4f}",
-        help="Probabilité estimée de promotion en LEC (modèle Logistic Regression).",
+        value=f"{player.get('talent_score', 0):.1f}/100",
+        help="Probabilité calibrée de promotion en LEC (×100).",
     )
+    percentile = player.get("score_percentile")
+    if percentile is not None and not pd.isna(percentile):
+        # percentile=98 → meilleur que 98% des joueurs → "Top 2%" (plancher à 1%)
+        top_pct = max(100 - float(percentile), 1)
+        st.caption(f"Top {top_pct:.0f}% des {position_str} ERL")
 
 with col2:
     promoted = bool(player.get("promoted_to_lec", False))
@@ -299,7 +303,7 @@ if len(player_rows) > 1:
     ).copy()
 
     if "talent_score" in seasons_display.columns:
-        seasons_display["talent_score"] = seasons_display["talent_score"].round(4)
+        seasons_display["talent_score"] = seasons_display["talent_score"].round(1)
     if "win_rate" in seasons_display.columns:
         seasons_display["win_rate"] = seasons_display["win_rate"].round(3)
 
@@ -309,7 +313,7 @@ if len(player_rows) > 1:
         column_config={
             "_source_year": st.column_config.NumberColumn("Année", format="%d"),
             "talent_score": st.column_config.ProgressColumn(
-                "Talent Score", min_value=0, max_value=1, format="%.4f"
+                "Talent Score", min_value=0.0, max_value=100.0, format="%.1f"
             ),
         },
         hide_index=True,
