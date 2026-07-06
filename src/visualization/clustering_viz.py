@@ -2,10 +2,10 @@
 clustering_viz.py — Visualisations Phase 6 : Playstyle Clustering
 
 Figures générées :
-  07_umap_by_position.png  — Scatter UMAP (5 sous-graphiques, un par position)
-                             coloré par cluster, avec les promus mis en avant
-  08_cluster_profiles.png  — Radar/heatmap des features moyennes par cluster
-  09_elbow_silhouette.png  — Courbes inertie + silhouette pour chaque position
+  07_umap_by_position.png          — Scatter UMAP (5 sous-graphiques, un par
+                                     position), promus mis en avant
+  08_cluster_profiles_heatmap.png  — Heatmap des z-scores moyens par cluster
+  09_elbow_silhouette.png          — Courbes inertie + silhouette par position
 """
 
 import json

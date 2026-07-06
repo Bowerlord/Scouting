@@ -6,8 +6,10 @@ la variable `promoted_to_lec` : identifier les joueurs ERL qui ont le potentiel
 d'évoluer en LEC.
 
 Approche :
-  - Out-of-Time split : Train sur 2024, Test sur 2025/2026
+  - Out-of-Time split : Train sur TRAIN_YEARS (2024), Test sur TEST_YEARS (2025)
     → Évite le data leakage temporel (le modèle ne "voit pas le futur")
+    → Les lignes 2026 (année partielle, très censurée à droite) ne sont ni en
+      train ni en test : elles sont seulement SCORÉES en sortie de pipeline
   - Métrique principale : PR-AUC (Precision-Recall AUC)
     → Adaptée aux datasets déséquilibrés (~7.5% de positifs)
     → L'accuracy classique serait trompeuse ici (un modèle "tout-0" ferait 92.5%)
@@ -51,6 +53,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 from src.config import (
+    ERL_LEAGUES,
     METRICS_DIR,
     MODELS_DIR,
     PROCESSED_DATA_DIR,
@@ -115,7 +118,8 @@ def make_out_of_time_split(
     """
     Crée un split temporel (Out-of-Time) :
       - Train : années TRAIN_YEARS (config.py → [2024])
-      - Test  : années TEST_YEARS  (config.py → [2025, 2026])
+      - Test  : années TEST_YEARS  (config.py → [2025])
+      - 2026 (partiel) : hors train ET hors test — scoré seulement.
 
     Pourquoi pas un split aléatoire ?
     → Avec un random split, des matchs du futur pourraient se retrouver dans
@@ -129,8 +133,7 @@ def make_out_of_time_split(
     pour le train/test afin de ne pas inclure les performances LEC dans les features.
     """
     # Ne garder que les ligues ERL (pas la LEC elle-même — la LEC est la target)
-    erl_leagues = ["LFL", "LFL2", "LVP SL", "NLC", "PRM", "TCL"]
-    df_erl = df[df["league"].isin(erl_leagues)].copy()
+    df_erl = df[df["league"].isin(ERL_LEAGUES)].copy()
 
     # Vérification des features disponibles
     available_features = [c for c in FEATURE_COLS if c in df_erl.columns]
@@ -341,8 +344,7 @@ def score_all_players(
     C'est la sortie principale du projet : un classement des joueurs ERL
     par potentiel de promotion en LEC.
     """
-    erl_leagues = ["LFL", "LFL2", "LVP SL", "NLC", "PRM", "TCL"]
-    df_erl = df[df["league"].isin(erl_leagues)].copy()
+    df_erl = df[df["league"].isin(ERL_LEAGUES)].copy()
 
     available_features = [c for c in feature_cols if c in df_erl.columns]
     X = df_erl[available_features].fillna(0)
@@ -359,7 +361,8 @@ def score_all_players(
 
     # Sélection des colonnes pour le rapport final
     report_cols = [
-        "playername", "league", "_source_year", "split", "position", "teamname",
+        "playername", "playername_original", "league", "_source_year", "split",
+        "position", "teamname",
         "talent_score", "score_percentile", "promoted_to_lec",
         "win_rate", "games_played", "champion_pool_size",
         "dpm_zscore", "cspm_zscore", "golddiffat15_zscore",

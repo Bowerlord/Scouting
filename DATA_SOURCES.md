@@ -42,22 +42,28 @@ Les CSV sont hébergés sur Google Drive. Le module `src/data/downloader.py` gè
 | | |
 |---|---|
 | **URL** | [lol.fandom.com](https://lol.fandom.com) |
-| **Accès** | API MediaWiki via `cargoquery` |
-| **Contenu** | Rosters, historique de transferts, résultats de tournois |
-| **Bibliothèque Python** | `mwclient` |
-| **Rate limiting** | Respecter les limites de l'API (1 requête/seconde) |
+| **Accès** | API MediaWiki via `cargoquery` (requêtes HTTP `requests`, sans bibliothèque dédiée) |
+| **Contenu** | Rosters, apparitions en match, résultats de tournois |
+| **Rate limiting** | Respecter les limites de l'API (~1 requête/seconde) |
 
 ### Utilisation dans le projet
 
-Leaguepedia est utilisée pour construire la **target variable** `promoted_to_top_league` :
-1. On récupère l'historique de carrière de chaque joueur
-2. On identifie les joueurs qui ont joué en ERL (Div 1 ou Div 2)
-3. On vérifie s'ils ont ensuite été recrutés en LEC
-4. Si oui → `promoted = 1`, sinon → `promoted = 0`
+⚠️ **Rôle réduit depuis l'introduction de la target datée.** La target
+`promoted_to_lec` est construite **uniquement depuis les dates de matchs
+Oracle's Elixir** : un match ERL est positif si le joueur débute en LEC dans
+les 18 mois qui suivent (voir `src/data/cleaner.py`,
+`PROMOTION_HORIZON_MONTHS`). L'API Cargo ne fournissant pas de dates de
+transfert exploitables, utiliser Leaguepedia comme label ré-introduirait la
+fuite temporelle corrigée.
 
-### Difficultés anticipées
+Leaguepedia sert donc de **cross-check informatif** (best effort) : si un cache
+`data/external/leaguepedia_careers.json` existe, le nettoyage logge combien de
+promus déclarés par Leaguepedia sont confirmés par la target datée. Le module
+`src/data/leaguepedia.py` reste exécutable en CLI pour régénérer ce cache.
 
-- **Normalisation des noms** : Un même joueur peut avoir des noms différents entre Oracle's Elixir et Leaguepedia (ex: "Caps" vs "caps" vs "G2 Caps"). Du fuzzy matching sera nécessaire.
+### Difficultés connues
+
+- **Normalisation des noms** : Un même joueur peut avoir des noms différents entre Oracle's Elixir et Leaguepedia (ex: "Caps" vs "caps" vs "G2 Caps") — le matching se fait en minuscules, sans fuzzy matching.
 - **Couverture** : Tous les transferts ne sont pas documentés sur Leaguepedia
 
 ---

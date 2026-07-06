@@ -33,7 +33,14 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 from sklearn.preprocessing import StandardScaler
 
-from src.config import CLUSTER_PARAMS, METRICS_DIR, MODELS_DIR, PROCESSED_DATA_DIR, RANDOM_STATE
+from src.config import (
+    CLUSTER_PARAMS,
+    ERL_LEAGUES,
+    METRICS_DIR,
+    MODELS_DIR,
+    PROCESSED_DATA_DIR,
+    RANDOM_STATE,
+)
 from src.utils.logger import logger
 
 warnings.filterwarnings("ignore")
@@ -51,8 +58,7 @@ CLUSTER_FEATURES = [
     "win_rate_zscore",          # Performance relative
 ]
 
-ERL_LEAGUES = ["LFL", "LFL2", "LVP SL", "NLC", "PRM", "TCL"]
-POSITIONS   = ["top", "jng", "mid", "bot", "sup"]
+POSITIONS = ["top", "jng", "mid", "bot", "sup"]
 
 # Noms narratifs d'archetypes par position, indexés sur les features dominantes.
 # Ces libellés sont générés automatiquement via `_archetype_label()`.
@@ -328,7 +334,8 @@ def run_clustering_pipeline():
     # reste nécessaire pour src/visualization/clustering_viz.py.
     df["cluster"] = df["cluster_position"]
     report_cols = [
-        "playername", "league", "_source_year", "split", "position", "teamname",
+        "playername", "playername_original", "league", "_source_year", "split",
+        "position", "teamname",
         "cluster_position", "cluster", "archetype", "umap_x", "umap_y",
         "promoted_to_lec", "win_rate", "games_played", "dpm_zscore", "cspm_zscore",
         "golddiffat15_zscore", "win_rate_zscore",

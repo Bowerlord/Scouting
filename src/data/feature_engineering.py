@@ -29,11 +29,10 @@ Usage :
   python -m src.data.feature_engineering
 """
 
-from pathlib import Path
-
 import numpy as np
 import pandas as pd
 
+from src.config import INTERIM_DATA_DIR, PROCESSED_DATA_DIR
 from src.utils.logger import logger
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -46,7 +45,9 @@ def load_cleaned_data() -> pd.DataFrame:
     Gère également la conversion des types booléens qui pourraient avoir été
     sauvegardés comme chaînes de caractères ('True'/'False') dans le CSV.
     """
-    data_path = Path("data/interim/cleaned_matches.csv")
+    # Chemin absolu depuis config.py : le module fonctionne quel que soit
+    # le répertoire courant (contrairement à un chemin relatif "data/...").
+    data_path = INTERIM_DATA_DIR / "cleaned_matches.csv"
     if not data_path.exists():
         raise FileNotFoundError(
             f"❌ {data_path} n'existe pas. Veuillez exécuter `make clean` d'abord."
@@ -124,6 +125,11 @@ def aggregate_player_stats(df: pd.DataFrame) -> pd.DataFrame:
         'champion': 'nunique',             # Nombre de champions uniques = Taille du Champion Pool
         'promoted_to_lec': 'max',          # Le joueur a-t-il été promu suite à ces performances ?
     }
+
+    # Conserver la casse d'origine du pseudo (cleaner.py normalise playername
+    # en minuscules pour les jointures) — utilisée par le dashboard à l'affichage
+    if 'playername_original' in df.columns:
+        agg_dict['playername_original'] = 'first'
 
     # Ajouter la moyenne pour toutes les statistiques de jeu
     for col in mean_cols:
@@ -226,9 +232,8 @@ def run_feature_engineering_pipeline():
     featured_df = add_zscores(player_df)
 
     # Sauvegarde
-    out_dir = Path("data/processed")
-    out_dir.mkdir(parents=True, exist_ok=True)
-    out_file = out_dir / "features_players.csv"
+    PROCESSED_DATA_DIR.mkdir(parents=True, exist_ok=True)
+    out_file = PROCESSED_DATA_DIR / "features_players.csv"
 
     featured_df.to_csv(out_file, index=False)
 

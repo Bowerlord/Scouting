@@ -1,19 +1,18 @@
 """
 leaguepedia.py — Requêtes vers l'API Cargo de Leaguepedia (lol.fandom.com)
 
-Ce module récupère les données de carrière des joueurs à partir de Leaguepedia
-pour construire la target variable du modèle supervisé.
+Ce module récupère les données de carrière des joueurs à partir de Leaguepedia.
 
-Rôle dans le pipeline :
-  On a besoin de savoir quels joueurs d'ERL ont été "promus" en LEC (ou dans
-  une ligue de niveau supérieur). Oracle's Elixir fournit les stats de match,
-  mais pas l'historique de carrière. Leaguepedia comble ce manque.
-
-Stratégie de construction de la target variable :
-  1. Méthode principale (Oracle's Elixir) : Si un joueur apparaît dans une
-     ERL en année N et dans le LEC en année N ou N+1 → promoted = 1
-  2. Méthode complémentaire (Leaguepedia) : Enrichir avec les données de
-     transferts pour capturer les joueurs promus entre les splits
+Rôle dans le pipeline (depuis la target datée) :
+  ⚠️ CROSS-CHECK INFORMATIF UNIQUEMENT. La target `promoted_to_lec` est
+  construite depuis les dates de matchs Oracle's Elixir (voir
+  `cleaner.build_dated_target_from_oracle`) : un match ERL est positif ssi le
+  joueur débute en LEC dans les PROMOTION_HORIZON_MONTHS qui suivent.
+  L'API Cargo n'exposant pas de dates de transfert exploitables, les labels
+  Leaguepedia (logique "ERL puis LEC, année N ou N+1") ne peuvent pas être
+  datés — les utiliser comme target ré-introduirait la fuite temporelle
+  corrigée. `cleaner.add_target_variable` ne s'en sert que pour logger un
+  rapport de couverture si un cache local existe.
 
 L'API Cargo de Leaguepedia est un wrapper SQL sur MediaWiki. On peut requêter
 des tables comme :
@@ -40,9 +39,9 @@ from pathlib import Path
 import requests
 
 from src.config import (
+    ALL_TARGET_LEAGUES,
     DATA_YEARS,
-    ERL_DIV1_LEAGUES,
-    ERL_DIV2_LEAGUES,
+    ERL_LEAGUES,
     EXTERNAL_DATA_DIR,
     TOP_LEAGUE,
 )
@@ -356,7 +355,7 @@ def build_promotion_labels(
         Dict {nom_joueur: True/False} indiquant si le joueur a été promu
     """
     if erl_leagues is None:
-        erl_leagues = list(ERL_DIV1_LEAGUES.keys()) + list(ERL_DIV2_LEAGUES.keys())
+        erl_leagues = ERL_LEAGUES
 
     promotions = {}
     promoted_count = 0
@@ -422,9 +421,7 @@ def save_career_data(
         "promotions": promotions,
         "metadata": {
             "source": "Leaguepedia Cargo API",
-            "leagues_queried": list(ERL_DIV1_LEAGUES.keys())
-            + list(ERL_DIV2_LEAGUES.keys())
-            + [TOP_LEAGUE],
+            "leagues_queried": ALL_TARGET_LEAGUES,
             "years_queried": DATA_YEARS,
         },
     }
@@ -500,14 +497,8 @@ def run_leaguepedia_pipeline(force: bool = False) -> tuple[dict, dict]:
             return cached
 
     # Récupérer les apparitions en match
-    all_leagues = (
-        list(ERL_DIV1_LEAGUES.keys())
-        + list(ERL_DIV2_LEAGUES.keys())
-        + [TOP_LEAGUE]
-    )
-
     appearances = fetch_player_appearances(
-        leagues=all_leagues,
+        leagues=ALL_TARGET_LEAGUES,
         years=DATA_YEARS,
     )
 

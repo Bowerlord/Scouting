@@ -81,8 +81,13 @@ ERL_DIV2_LEAGUES = {
 # Ligue top (LEC) — utilisée pour la target variable
 TOP_LEAGUE = "LEC"
 
+# Toutes les ERLs (Div 1 + Div 2), SANS la LEC — c'est le périmètre des joueurs
+# scorés/clusterisés. Source unique de vérité : ne pas redéfinir cette liste
+# dans les modules (talent_scorer, clusterer, cleaner l'importent d'ici).
+ERL_LEAGUES = list(ERL_DIV1_LEAGUES.keys()) + list(ERL_DIV2_LEAGUES.keys())
+
 # Toutes les ligues combinées (pour le filtrage)
-ALL_TARGET_LEAGUES = list(ERL_DIV1_LEAGUES.keys()) + list(ERL_DIV2_LEAGUES.keys()) + [TOP_LEAGUE]
+ALL_TARGET_LEAGUES = ERL_LEAGUES + [TOP_LEAGUE]
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Configuration du Machine Learning
@@ -170,31 +175,11 @@ XGB_PARAMS = {
 }
 
 # Clustering
+# NB : les paramètres DBSCAN et les configs PyTorch (autoencoder, feedforward)
+# d'itérations abandonnées ont été supprimés — K-Means par position est
+# l'approche retenue (voir src/models/clusterer.py).
 CLUSTER_PARAMS = {
     "k_range": range(3, 12),  # Range de k à tester pour K-Means
-    # DBSCAN : eps plus grand car espace 9D après StandardScaler
-    # (la "malédiction de la dimensionnalité" dilate les distances)
-    # Règle empirique : chercher le coude dans la courbe des k-NN distances
-    "dbscan_eps_range": [1.5, 2.0, 2.5, 3.0, 4.0],
-    "dbscan_min_samples": 8,
-}
-
-# Autoencoder PyTorch
-AUTOENCODER_PARAMS = {
-    "latent_dim": 16,
-    "hidden_dims": [64, 32],
-    "epochs": 100,
-    "batch_size": 64,
-    "learning_rate": 1e-3,
-}
-
-# Feedforward PyTorch (Talent Score)
-FEEDFORWARD_PARAMS = {
-    "hidden_dims": [128, 64, 32],
-    "dropout": 0.3,
-    "epochs": 100,
-    "batch_size": 64,
-    "learning_rate": 1e-3,
 }
 
 # ══════════════════════════════════════════════════════════════════════════════

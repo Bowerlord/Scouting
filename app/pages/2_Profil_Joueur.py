@@ -73,9 +73,22 @@ except FileNotFoundError:
 # ══════════════════════════════════════════════════════════════════════════════
 
 player_names = sorted(df_talent["playername"].dropna().unique().tolist())
+
+# Casse d'origine des pseudos pour l'affichage (playername est normalisé en
+# minuscules par le pipeline et sert de clé — on ne le modifie pas)
+display_names: dict = {}
+if "playername_original" in df_talent.columns:
+    display_names = (
+        df_talent.dropna(subset=["playername", "playername_original"])
+        .drop_duplicates("playername")
+        .set_index("playername")["playername_original"]
+        .to_dict()
+    )
+
 selected_player = st.selectbox(
     "Rechercher un joueur",
     options=player_names,
+    format_func=lambda n: display_names.get(n, n),
     help="Tapez pour filtrer la liste.",
 )
 
@@ -98,7 +111,8 @@ league_str = str(player.get("league", "N/A"))
 split_str = str(player.get("split", "N/A"))
 year_str = str(int(player.get("_source_year", 0))) if player.get("_source_year") else "N/A"
 
-st.subheader(selected_player)
+player_display = display_names.get(selected_player, selected_player)
+st.subheader(player_display)
 st.caption(f"{position_str} · {team_str} · {league_str} · Split {split_str} {year_str}")
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -158,7 +172,18 @@ cluster_id = None
 if clustering_available and not df_clusters.empty and "playername" in df_clusters.columns:
     cluster_rows = df_clusters[df_clusters["playername"] == selected_player]
     if not cluster_rows.empty:
-        cluster_row = cluster_rows.iloc[0]
+        # Aligner le clustering sur la saison "peak" affichée en tête de page :
+        # un joueur multi-saisons a un cluster PAR saison, et prendre iloc[0]
+        # sans filtre pouvait afficher l'archétype d'une autre saison/position.
+        match_keys = [k for k in ["position", "_source_year", "split"]
+                      if k in cluster_rows.columns and k in player.index]
+        peak_match = cluster_rows
+        for k in match_keys:
+            narrowed = peak_match[peak_match[k] == player[k]]
+            if narrowed.empty:
+                break
+            peak_match = narrowed
+        cluster_row = peak_match.iloc[0] if not peak_match.empty else cluster_rows.iloc[0]
         cluster_id = cluster_row.get("cluster", None)
         position = str(player.get("position", "")).lower()
 
@@ -225,7 +250,7 @@ else:
             fill="toself",
             fillcolor="rgba(11, 252, 228, 0.15)",
             line=dict(color="#0BFCE4", width=2.5),
-            name=selected_player,
+            name=player_display,
         )
     )
 
@@ -266,7 +291,7 @@ else:
         paper_bgcolor="#1a1a2e",
         font=dict(color="#ffffff"),
         title=dict(
-            text=f"Profil de performance — {selected_player}",
+            text=f"Profil de performance — {player_display}",
             font=dict(color="#0BFCE4", size=16),
         ),
         legend=dict(

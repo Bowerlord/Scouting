@@ -27,7 +27,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 import streamlit as st
-from utils.data_loader import load_talent_scores
+from utils.data_loader import load_model_metrics, load_talent_scores
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Configuration de la page
@@ -51,7 +51,7 @@ st.markdown(
 
     Identifiez les talents émergents des ligues ERL (LFL, PRM, LVP SL, NLC, TCL)
     avant leur promotion en **LEC** — grâce à un modèle entraîné sur les données
-    Oracle's Elixir 2024-2025.
+    Oracle's Elixir.
     """
 )
 
@@ -67,9 +67,11 @@ try:
     col1, col2, col3, col4 = st.columns(4)
 
     with col1:
+        # len(df) compte des lignes joueur/split ; on affiche les deux niveaux
         st.metric(
             label="Joueurs analysés",
-            value=f"{len(df):,}",
+            value=f"{df['playername'].nunique():,}",
+            help=f"{len(df):,} lignes joueur × split au total.",
         )
 
     with col2:
@@ -79,11 +81,11 @@ try:
         )
 
     with col3:
-        n_promoted = int(df["promoted_to_lec"].sum())
+        n_promoted = df.loc[df["promoted_to_lec"], "playername"].nunique()
         st.metric(
             label="Promus en LEC",
-            value=n_promoted,
-            help="Joueurs ayant effectivement atteint la LEC dans les données.",
+            value=int(n_promoted),
+            help="Joueurs uniques dont la promotion en LEC est observée dans les données.",
         )
 
     with col4:
@@ -153,15 +155,35 @@ with col_c:
 
 with st.sidebar:
     st.markdown("### À propos du modèle")
+
+    # Chiffres lus depuis talent_score_results.json (généré par le pipeline)
+    # pour rester exacts après chaque ré-entraînement.
+    metrics = load_model_metrics()
+    best_model = metrics.get("best_model", "N/A")
+    comparison = metrics.get("comparison", [])
+    best_pr_auc = next(
+        (m.get("pr_auc") for m in comparison if m.get("model_name") == best_model),
+        None,
+    )
+    pr_auc_label = f"(PR-AUC : {best_pr_auc:.3f})" if best_pr_auc is not None else ""
+    train_years = metrics.get("train_years", [])
+    test_years = metrics.get("test_years", [])
+    split_label = (
+        f"entraîné {'/'.join(map(str, train_years))} → testé {'/'.join(map(str, test_years))}"
+        if train_years and test_years
+        else "split temporel Out-of-Time"
+    )
+
     st.markdown(
-        """
+        f"""
         **Pipeline ML** entraîné sur Oracle's Elixir.
 
-        - **Meilleur modèle** : Logistic Regression (PR-AUC : 0.256)
+        - **Meilleur modèle** : {best_model} {pr_auc_label}
+        - **Calibration** : probabilités calibrées (Platt)
         - **Clustering** : K-Means par position
         - **Features** : z-scores DPM, CSPM, Gold@15, XP@15...
-        - **Split temporel** : entraîné 2024 → testé 2025
+        - **Split temporel** : {split_label}
         """
     )
     st.markdown("---")
-    st.caption("KCorp Scouting Tool — 2025")
+    st.caption("KCorp Scouting Tool")
