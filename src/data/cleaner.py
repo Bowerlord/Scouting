@@ -5,16 +5,18 @@ Ce module est le cœur du pipeline de données. Il prend les CSV bruts
 d'Oracle's Elixir et produit un dataset nettoyé, filtré par ligue,
 avec la target variable "promoted_to_top_league" ajoutée.
 
-Étapes du nettoyage :
-  1. Charger les CSV bruts (2024-2025)
-  2. Filtrer les ligues ciblées (LFL, PRM, LVP SL, NLC, TCL + Div 2 + LEC)
-  3. Filtrer les lignes "joueur" (exclure les lignes "team" agrégées)
-  4. Sélectionner les colonnes pertinentes
-  5. Normaliser les noms de joueurs (lowercase, strip, gestion des aliases)
-  6. Gérer les valeurs manquantes
-  7. Construire la target variable "promoted" depuis Oracle's Elixir
-     (enrichie par Leaguepedia si disponible)
-  8. Sauvegarder le dataset nettoyé dans data/interim/
+Étapes du nettoyage (8 étapes loggées, + validation et sauvegarde) :
+  1. Charger les CSV bruts (DATA_YEARS, config.py)
+  2. Découvrir les ligues disponibles (log informatif)
+  3. Filtrer les ligues ciblées (LFL, PRM, LVP SL, NLC, TCL + Div 2 + LEC)
+  4. Filtrer les lignes "joueur" (exclure les lignes "team" agrégées)
+  5. Sélectionner les colonnes pertinentes
+  6. Normaliser les noms de joueurs (lowercase + strip ; casse d'origine
+     conservée dans playername_original pour l'affichage)
+  7. Gérer les valeurs manquantes (médiane par ligue × année)
+  8. Construire la target variable DATÉE "promoted_to_lec" depuis les dates
+     Oracle's Elixir (Leaguepedia = cross-check informatif seulement)
+  Puis : validation du dataset et sauvegarde dans data/interim/
 
 Pourquoi 80% du temps est passé ici ?
   Les données réelles sont TOUJOURS sales. Oracle's Elixir est bien structuré,
@@ -40,6 +42,7 @@ from src.config import (
     DATA_YEARS,
     ERL_DIV1_LEAGUES,
     ERL_DIV2_LEAGUES,
+    ERL_LEAGUES,
     INTERIM_DATA_DIR,
     KEY_COLUMNS,
     PROMOTION_HORIZON_MONTHS,
@@ -331,14 +334,18 @@ def handle_missing_values(df: pd.DataFrame) -> pd.DataFrame:
     Stratégie documentée :
       - Colonnes d'identité (playername, teamname, league) : drop si NaN
         (une ligne sans joueur n'a pas de sens)
-      - Colonnes numériques (stats) : remplir avec la médiane de la ligue
-        (pas la moyenne — plus robuste aux outliers)
+      - Colonnes numériques (stats) : remplir avec la médiane de la
+        ligue × année (pas la moyenne — plus robuste aux outliers)
       - Colonnes catégorielles : remplir avec "unknown"
 
-    Pourquoi la médiane par ligue et pas la médiane globale ?
-      Parce que le niveau de jeu varie entre les ligues. Un CS/min moyen
-      en LFL n'est pas le même qu'en LFL2. La médiane par ligue preserve
-      cette information.
+    Pourquoi la médiane par ligue ET par année ?
+      - Par ligue : le niveau de jeu varie entre ligues (un CS/min moyen en
+        LFL n'est pas le même qu'en LFL2).
+      - Par année : le split train/test est temporel (2024 vs 2025+). Une
+        médiane calculée toutes années confondues ferait fuir de
+        l'information du test set vers les lignes de train via les valeurs
+        imputées. En groupant par (league, _source_year), chaque année
+        n'utilise que ses propres statistiques.
 
     Args:
         df: DataFrame
@@ -367,14 +374,18 @@ def handle_missing_values(df: pd.DataFrame) -> pd.DataFrame:
     exclude = ["_source_year", "result"]
     numeric_cols = [c for c in numeric_cols if c not in exclude]
 
+    # Grouper par année en plus de la ligue quand la traçabilité existe
+    # (anti-fuite : voir docstring)
+    impute_keys = ["league", "_source_year"] if "_source_year" in df.columns else ["league"]
+
     for col in numeric_cols:
         nan_count = df[col].isna().sum()
         if nan_count > 0:
-            # Imputation par médiane de la ligue
-            df[col] = df.groupby("league")[col].transform(
+            # Imputation par médiane de la ligue × année
+            df[col] = df.groupby(impute_keys)[col].transform(
                 lambda x: x.fillna(x.median())
             )
-            # Si encore des NaN (ligue entière sans données), médiane globale
+            # Si encore des NaN (groupe entier sans données), médiane globale
             remaining_nan = df[col].isna().sum()
             if remaining_nan > 0:
                 df[col] = df[col].fillna(df[col].median())
@@ -456,8 +467,7 @@ def build_dated_target_from_oracle(
     Returns:
         pd.Series booléenne alignée sur df.index (True = match ERL pré-promotion).
     """
-    erl_leagues = list(ERL_DIV1_LEAGUES.keys()) + list(ERL_DIV2_LEAGUES.keys())
-    erl_mask = df["league"].isin(erl_leagues)
+    erl_mask = df["league"].isin(ERL_LEAGUES)
 
     debut_dates = compute_lec_debut_dates(df)
     if not debut_dates:
@@ -532,8 +542,7 @@ def add_target_variable(
             )
 
     # Stats
-    erl_leagues = list(ERL_DIV1_LEAGUES.keys()) + list(ERL_DIV2_LEAGUES.keys())
-    erl_mask = df["league"].isin(erl_leagues)
+    erl_mask = df["league"].isin(ERL_LEAGUES)
     promoted_rows = int(df.loc[erl_mask, "promoted_to_lec"].sum())
     total_rows = int(erl_mask.sum())
     logger.info(
@@ -635,17 +644,10 @@ def run_cleaning_pipeline() -> pd.DataFrame:
     """
     Exécute le pipeline complet de nettoyage.
 
-    Étapes (dans l'ordre) :
-      1. Charger les CSV bruts → data/raw/
-      2. Découvrir les ligues disponibles (étape exploratoire)
-      3. Filtrer les ligues ciblées
-      4. Filtrer les lignes joueur (exclure les lignes team)
-      5. Sélectionner les colonnes pertinentes
-      6. Normaliser les noms de joueurs
-      7. Gérer les valeurs manquantes
-      8. Ajouter la target variable "promoted_to_lec"
-      9. Valider le dataset
-      10. Sauvegarder dans data/interim/
+    Étapes (dans l'ordre — voir la docstring du module) :
+      1-8. Chargement → découverte des ligues → filtrages → sélection de
+           colonnes → normalisation des noms → valeurs manquantes → target datée
+      Puis : validation du dataset et sauvegarde dans data/interim/
 
     Returns:
         DataFrame nettoyé

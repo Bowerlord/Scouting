@@ -41,6 +41,27 @@ _FIGURES_DIR = _PROJECT_ROOT / "reports" / "figures"
 
 
 @st.cache_data
+def load_model_metrics() -> dict:
+    """
+    Charge les métriques du pipeline d'entraînement (talent_score_results.json).
+
+    Utilisé par la page d'accueil pour afficher des chiffres à jour (meilleur
+    modèle, PR-AUC, années train/test) au lieu de valeurs codées en dur qui
+    divergeraient à chaque ré-entraînement.
+
+    Returns:
+        dict: Contenu du JSON (comparison, best_model, brier scores, ...).
+              Dict vide si le fichier n'existe pas — l'appelant doit gérer
+              l'absence de clés.
+    """
+    path = _METRICS_DIR / "talent_score_results.json"
+    if not path.exists():
+        return {}
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
+
+
+@st.cache_data
 def load_talent_scores() -> pd.DataFrame:
     """
     Charge le fichier des scores de talent par joueur.

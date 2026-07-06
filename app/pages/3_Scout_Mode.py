@@ -102,6 +102,17 @@ else:
     df["cluster"] = pd.NA
     df["archetype"] = pd.NA
 
+# Casse d'origine des pseudos pour l'affichage (playername reste la clé
+# normalisée en minuscules utilisée par les jointures ci-dessus)
+display_names: dict = {}
+if "playername_original" in df.columns:
+    display_names = (
+        df.dropna(subset=["playername", "playername_original"])
+        .drop_duplicates("playername")
+        .set_index("playername")["playername_original"]
+        .to_dict()
+    )
+
 # ══════════════════════════════════════════════════════════════════════════════
 # SECTION 1 — Shortlist par critères
 # ══════════════════════════════════════════════════════════════════════════════
@@ -192,6 +203,11 @@ sl_cols = [c for c in [
 
 sl_display = shortlist[sl_cols].copy()
 
+if display_names:
+    sl_display["playername"] = sl_display["playername"].map(
+        lambda n: display_names.get(n, n)
+    )
+
 if "promoted_to_lec" in sl_display.columns:
     sl_display["promoted_to_lec"] = sl_display["promoted_to_lec"].apply(
         lambda x: "✅" if x else "❌"
@@ -248,6 +264,7 @@ else:
     ref_player = st.selectbox(
         "Joueur de référence",
         options=player_names,
+        format_func=lambda n: display_names.get(n, n),
         key="sim_player",
         help="Trouvez des joueurs ayant le même profil de jeu (même cluster K-Means).",
     )
@@ -263,8 +280,9 @@ else:
             ref_cluster = ref.get("cluster")
             ref_position = str(ref.get("position", ""))
 
+            ref_display = display_names.get(ref_player, ref_player)
             st.info(
-                f"**{ref_player}** · {ref_position.upper()} · "
+                f"**{ref_display}** · {ref_position.upper()} · "
                 f"Cluster #{ref_cluster if pd.notna(ref_cluster) else 'N/A'} · "
                 f"Talent Score : {ref.get('talent_score', 0):.1f}/100"
             )
@@ -294,6 +312,11 @@ else:
                 ] if c in similar.columns]
 
                 sim_display = similar[sim_cols].copy()
+
+                if display_names:
+                    sim_display["playername"] = sim_display["playername"].map(
+                        lambda n: display_names.get(n, n)
+                    )
 
                 if "promoted_to_lec" in sim_display.columns:
                     sim_display["promoted_to_lec"] = sim_display["promoted_to_lec"].apply(
@@ -342,7 +365,8 @@ else:
 
                     # Marquer le joueur de référence pour le distinguer visuellement
                     combined["_marker"] = combined["playername"].apply(
-                        lambda n: "★ " + n if n == ref_player else n
+                        lambda n: ("★ " if n == ref_player else "")
+                        + display_names.get(n, n)
                     )
 
                     axis_x = zscore_cols[0]
@@ -360,7 +384,7 @@ else:
                         hover_name="_marker",
                         hover_data={"talent_score": ":.1f", "_marker": False},
                         title=(
-                            f"Joueurs similaires à {ref_player} "
+                            f"Joueurs similaires à {ref_display} "
                             f"— cluster #{int(ref_cluster)} / {ref_position.upper()}"
                         ),
                         labels={axis_x: label_x, axis_y: label_y, "league": "Ligue"},

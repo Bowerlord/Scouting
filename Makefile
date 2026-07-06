@@ -15,6 +15,11 @@
 
 .PHONY: help data clean features train cluster run-pipeline app all test lint format
 
+# Interpréteur Python — surchargez selon votre système :
+#   make train PYTHON=py        (Windows avec le lanceur py)
+#   make train PYTHON=python3   (Linux/macOS)
+PYTHON ?= python
+
 # ── Commande par défaut ──────────────────────────────────────────────────────
 help:
 	@echo "╔══════════════════════════════════════════════════════════╗"
@@ -36,24 +41,24 @@ help:
 # ── Pipeline de données ──────────────────────────────────────────────────────
 data:
 	@echo "📥 Téléchargement des données Oracle's Elixir (2024-2026)..."
-	python -m src.data.downloader
+	$(PYTHON) -m src.data.downloader
 
 clean: data
 	@echo "🧹 Nettoyage et filtrage des données..."
-	python -m src.data.cleaner
+	$(PYTHON) -m src.data.cleaner
 
 features: clean
 	@echo "⚙️  Construction des features..."
-	python -m src.data.feature_engineering
+	$(PYTHON) -m src.data.feature_engineering
 
 # ── Modélisation ─────────────────────────────────────────────────────────────
 train: features
 	@echo "🎯 Entraînement du Talent Score..."
-	python -m src.models.talent_scorer
+	$(PYTHON) -m src.models.talent_scorer
 
 cluster: features
 	@echo "🔬 Exécution du Playstyle Clustering..."
-	python -m src.models.clusterer
+	$(PYTHON) -m src.models.clusterer
 
 # ── Dashboard ────────────────────────────────────────────────────────────────
 # run-pipeline : produit les artefacts lus par le dashboard
@@ -64,7 +69,7 @@ run-pipeline: train cluster
 
 app:
 	@echo "🚀 Lancement du dashboard Streamlit..."
-	streamlit run app/app.py
+	$(PYTHON) -m streamlit run app/app.py
 
 # ── Pipeline complet ─────────────────────────────────────────────────────────
 all: data clean features train cluster
@@ -73,12 +78,12 @@ all: data clean features train cluster
 # ── Qualité du code ──────────────────────────────────────────────────────────
 test:
 	@echo "🧪 Lancement des tests..."
-	python -m pytest tests/ -v
+	$(PYTHON) -m pytest tests/ -v
 
 lint:
 	@echo "🔍 Vérification du code..."
-	python -m ruff check src/ tests/
+	$(PYTHON) -m ruff check src/ tests/
 
 format:
 	@echo "✨ Formatage du code..."
-	python -m black src/ tests/
+	$(PYTHON) -m black src/ tests/

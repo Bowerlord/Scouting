@@ -1,12 +1,13 @@
 """
 talent_score_viz.py — Visualisations Phase 5 : Talent Score
 
-Génère 5 graphiques sauvegardés dans reports/figures/ :
-  1. Courbes Précision-Rappel (3 modèles)
-  2. Comparaison des métriques (bar chart)
-  3. Feature Importances (Random Forest)
-  4. Distribution des scores (promus vs non-promus)
-  5. Leaderboard Top 30 — scatter plot
+Génère 6 graphiques sauvegardés dans reports/figures/ :
+  1. Courbes Précision-Rappel (4 modèles)          → 01_pr_curves.png
+  2. Comparaison des métriques (bar chart)          → 02_metrics_comparison.png
+  3. Feature Importances (Random Forest)            → 03_feature_importances.png
+  4. Distribution des scores (promus vs non-promus) → 04_score_distribution.png
+  5. Leaderboard Top 30                             → 05_leaderboard_top30.png
+  6. Leaderboard Top 5 par ligue                    → 06_leaderboard_by_league.png
 """
 
 import json
@@ -69,16 +70,20 @@ def load_all():
     available = [c for c in FEATURE_COLS if c in X_train.columns]
     X_test = X_test[available].fillna(0)
 
+    # Les noms de fichiers doivent correspondre au safe_name généré par
+    # run_talent_scoring_pipeline : lower + espaces→_ + parenthèses supprimées.
     models = {}
     for key, fname in [
-        ("lr",       "talent_scorer_logistic_regression_baseline_.pkl"),
+        ("lr",       "talent_scorer_logistic_regression_baseline.pkl"),
         ("rf",       "talent_scorer_random_forest.pkl"),
-        ("rf_tuned", "talent_scorer_random_forest_tuned_.pkl"),
+        ("rf_tuned", "talent_scorer_random_forest_tuned.pkl"),
         ("xgb",      "talent_scorer_xgboost.pkl"),
     ]:
         p = MODELS_DIR / fname
         if p.exists():
             models[key] = joblib.load(p)
+        else:
+            print(f"⚠️  Modèle absent, ignoré dans les figures : {fname}")
 
     scores_df = pd.read_csv(METRICS_DIR / "talent_scores_players.csv")
     with open(METRICS_DIR / "talent_score_results.json", encoding="utf-8") as f:
@@ -230,7 +235,7 @@ def plot_score_distribution(scores_df):
     fig.patch.set_facecolor("#0f172a")
 
     promoted = scores_df[scores_df["promoted_to_lec"]]["talent_score"]
-    not_promoted = scores_df[not scores_df["promoted_to_lec"]]["talent_score"]
+    not_promoted = scores_df[~scores_df["promoted_to_lec"]]["talent_score"]
 
     ax.hist(not_promoted, bins=40, color=PALETTE["not_promoted"], alpha=0.75,
             label=f"Non-promus (n={len(not_promoted):,})", zorder=2)
@@ -297,12 +302,14 @@ def plot_leaderboard(scores_df):
     patches.append(mpatches.Patch(color="white", label="⭐ = Promu LEC confirmé"))
     ax.legend(handles=patches, fontsize=9, loc="lower right", framealpha=0.2, ncol=2)
 
-    ax.set_xlim(0, 110)
+    # Depuis la calibration (probabilités honnêtes), les scores plafonnent
+    # bien en dessous de 100 : on adapte l'échelle au max réel.
+    xmax = max(best["talent_score"].max() * 1.1, 10)
+    ax.set_xlim(0, xmax)
     ax.set_yticks([])
     ax.set_xlabel("Talent Score", fontsize=12)
     ax.set_title("🏆 Leaderboard — Top 30 Talents ERL\n(meilleur score par joueur, tous splits confondus)",
                  fontsize=14, fontweight="bold", pad=15)
-    ax.axvline(50, color="#475569", lw=1, ls=":")
     ax.grid(False)
 
     fig.tight_layout()

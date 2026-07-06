@@ -105,6 +105,11 @@ filtered = filtered[filtered["talent_score"] >= min_score]
 filtered = filtered.sort_values("talent_score", ascending=False).reset_index(drop=True)
 filtered.index += 1  # Classement lisible à partir de 1
 
+# Affichage : pseudo dans sa casse d'origine quand le CSV la fournit
+# (playername reste en minuscules — c'est la clé de jointure du pipeline)
+if "playername_original" in filtered.columns:
+    filtered["playername"] = filtered["playername_original"].fillna(filtered["playername"])
+
 st.caption(f"{len(filtered)} joueur(s) affiché(s) après filtrage")
 
 # ══════════════════════════════════════════════════════════════════════════════
