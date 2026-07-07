@@ -18,7 +18,7 @@ Ce document décrit les sources de données utilisées dans le projet, leur form
 
 ### Colonnes utilisées
 
-Les colonnes clés sont documentées dans `src/config.py` (variable `KEY_COLUMNS`). Les principales :
+Les colonnes clés sont documentées dans `src/config.py` (variable `KEY_COLUMNS`) et leur présence est vérifiée à l'ingestion par `src/data/schema.py` (une colonne requise manquante fait échouer le pipeline). Les principales :
 
 - **Identifiants** : `gameid`, `league`, `split`, `date`, `playername`, `teamname`
 - **Résultat** : `result` (1 = victoire, 0 = défaite)

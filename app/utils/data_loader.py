@@ -62,6 +62,26 @@ def load_model_metrics() -> dict:
 
 
 @st.cache_data
+def load_refresh_metadata() -> dict:
+    """
+    Charge les métadonnées de fraîcheur des snapshots (refresh_metadata.json).
+
+    Écrit par src/utils/metadata.py à chaque exécution du pipeline de
+    nettoyage. Permet d'afficher « Données à jour du X » dans la sidebar.
+
+    Returns:
+        dict: {generated_at, data_max_date, data_years, n_rows, n_players}.
+              Dict vide si le fichier n'existe pas (snapshots antérieurs à
+              son introduction) — l'appelant doit gérer l'absence de clés.
+    """
+    path = _METRICS_DIR / "refresh_metadata.json"
+    if not path.exists():
+        return {}
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
+
+
+@st.cache_data
 def load_talent_scores() -> pd.DataFrame:
     """
     Charge le fichier des scores de talent par joueur.

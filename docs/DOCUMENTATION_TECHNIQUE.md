@@ -78,6 +78,7 @@ Les paramètres d'itérations abandonnées (configs PyTorch `AUTOENCODER_PARAMS`
 
 - Télécharge les CSV Oracle's Elixir (~75 Mo/année) depuis Google Drive, avec gestion du token anti-virus des gros fichiers, retry avec backoff (3 tentatives), et **cache local** : un fichier existant > 1 Mo n'est pas re-téléchargé (`force=True` pour forcer).
 - Garde-fou : un fichier < 1 Ko contenant du HTML est détecté comme page d'erreur et supprimé.
+- **Validation de schéma** (`src/data/schema.py`) : au chargement (`load_raw_data`), chaque CSV est vérifié contre les colonnes requises (`KEY_COLUMNS` moins les optionnelles connues comme `killparticipation`) et la coercibilité numérique d'un sous-ensemble de colonnes. Une dérive de format lève `SchemaValidationError` et stoppe le pipeline au lieu de produire des snapshots faux.
 
 ### 3.2 Nettoyage — `src/data/cleaner.py` (`run_cleaning_pipeline`)
 
@@ -89,7 +90,7 @@ Les paramètres d'itérations abandonnées (configs PyTorch `AUTOENCODER_PARAMS`
 5. **Sélection de colonnes** : 166 → ~34 (`KEY_COLUMNS`).
 6. **Normalisation des noms** : `strip().lower()` ; l'original est gardé dans `playername_original` (non utilisé en aval — le dashboard affiche donc les pseudos en minuscules).
 7. **Valeurs manquantes** : drop si NaN d'identité ; imputation des stats par **médiane de ligue × année** (puis médiane globale en repli) ; catégorielles → `"unknown"`.
-8. **Target datée** (voir ci-dessous), puis validation (assertions loggées) et sauvegarde → `data/interim/cleaned_matches.csv`.
+8. **Target datée** (voir ci-dessous), puis validation (assertions loggées) et sauvegarde → `data/interim/cleaned_matches.csv`. Le pipeline écrit aussi `reports/metrics/refresh_metadata.json` (`src/utils/metadata.py`) : date max des données, date d'exécution, volumétrie — affiché comme indicateur de fraîcheur dans la sidebar du dashboard.
 
 ### 3.3 Target datée — cœur méthodologique
 
@@ -195,6 +196,7 @@ Identifiants identiques + `cluster_position` (int), `cluster` (alias), `archetyp
 - **`tests/test_features.py`** (13 tests) : z-scores intra-groupe (moyenne ≈ 0, pas de fuite inter-ligue, groupes singletons), format de la target, **5 tests de la target datée** (pré-promotion positif, ex-LEC relégué négatif, hors horizon négatif, jamais promu négatif, MIN des dates LEC), structure du dataset.
 - **`tests/test_models.py`** (15 tests) : isolation du split OOT, probabilités valides, PR-AUC > baseline, importances RF sommant à 1, K-Means (labels valides, pas de cluster vide), UMAP (skippé si non installé), similarity search, **percentiles** (plage (0,100], max=100 par position), **échelle 0-100 du talent_score**, **non-fuite des groupes** en `StratifiedGroupKFold`.
 - **CI GitHub Actions** (`.github/workflows/ci.yml`) : matrice Python 3.10/3.11, `ruff check src/ tests/` + `pytest tests/`. Dépendances volontairement minimales (pas de torch/xgboost/umap — `xgboost` est un import optionnel dans `talent_scorer`, le test UMAP se skippe). Déclencheurs : push sur `main`, PR, manuel.
+- **Data Refresh GitHub Actions** (`.github/workflows/data-refresh.yml`) : chaque lundi (cron) ou à la demande, ré-exécute le pipeline complet avec les dépendances complètes (xgboost + umap) et ouvre une PR `chore/data-refresh` contenant les snapshots régénérés de `reports/metrics/`. En cas d'échec (ID Drive expiré, dérive de schéma), une issue est ouverte avec le lien du run. Limitation : une PR créée avec `GITHUB_TOKEN` ne déclenche pas la CI — configurer un PAT dans le secret `DATA_REFRESH_TOKEN` pour la déclencher automatiquement.
 - **Makefile** : cibles chaînées `data → clean → features → train/cluster`, `run-pipeline` (artefacts dashboard), `app`, `test`, `lint`, `format`. Utilise `python` (sous Windows sans alias, préférer `py -m …`).
 - **Lint** : ruff (`E, F, I, W`, ligne 120). Formatage : black (120).
 

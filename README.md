@@ -381,6 +381,17 @@ Le dashboard ne relance jamais le pipeline ML : il lit des snapshots figés dans
 > données brutes ni des modèles entraînés. Seuls les résultats pré-calculés
 > (quelques milliers de lignes) sont nécessaires à l'exécution du dashboard.
 
+### 🔄 Rafraîchissement automatique des données
+
+Un workflow GitHub Actions (`.github/workflows/data-refresh.yml`) ré-exécute
+le pipeline complet **chaque lundi** (ou à la demande via *Run workflow*) et
+ouvre une PR avec les snapshots régénérés de `reports/metrics/` — il suffit de
+vérifier les métriques et de merger. Le schéma des CSV Oracle's Elixir est
+validé à l'ingestion (`src/data/schema.py`) : une dérive de format fait échouer
+le pipeline bruyamment et ouvre une issue au lieu de produire des snapshots
+faux. La sidebar du dashboard affiche la fraîcheur des données
+(« 📅 Données à jour du X »), lue depuis `reports/metrics/refresh_metadata.json`.
+
 ---
 
 ## 📓 Notebooks
@@ -410,6 +421,7 @@ Le dashboard ne relance jamais le pipeline ML : il lit des snapshots figés dans
 - [x] 📱 Dashboard Streamlit interactif *(voir section Dashboard)*
 - [x] 🎯 Target datée pour éliminer la fuite temporelle *(voir ci-dessous)*
 - [x] ⚙️ Intégration continue (CI) : lint + tests automatiques
+- [x] 🔄 Rafraîchissement hebdomadaire automatique des données *(voir section Dashboard)*
 - [ ] 🎮 Intégration des données Solo Queue (Riot API)
 - [ ] 📈 Modèle temporel (LSTM) pour capturer la progression
 - [x] 📊 Calibration du Talent Score + percentiles de rang par position *(voir Phase 5)*

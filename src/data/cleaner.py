@@ -50,7 +50,9 @@ from src.config import (
     TOP_LEAGUE,
 )
 from src.data.leaguepedia import load_career_data
+from src.data.schema import SchemaValidationError, validate_raw_schema
 from src.utils.logger import logger
+from src.utils.metadata import write_refresh_metadata
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Chargement des données brutes
@@ -93,9 +95,14 @@ def load_raw_data(years: list[int] | None = None) -> pd.DataFrame:
         logger.info(f"📂 Chargement de {filename}...")
         try:
             df = pd.read_csv(filepath, low_memory=False)
+            validate_raw_schema(df, source=filename)
             df["_source_year"] = year  # Traçabilité : d'où vient chaque ligne
             dfs.append(df)
             logger.info(f"   → {len(df):,} lignes, {len(df.columns)} colonnes")
+        except SchemaValidationError:
+            # Dérive de schéma Oracle's Elixir : on échoue bruyamment plutôt
+            # que de produire des snapshots faux avec les années restantes.
+            raise
         except Exception as e:
             logger.error(f"❌ Erreur lors du chargement de {filename} : {e}")
             continue
@@ -699,6 +706,9 @@ def run_cleaning_pipeline() -> pd.DataFrame:
     df.to_csv(output_path, index=False)
     size_mb = output_path.stat().st_size / (1024 * 1024)
     logger.success(f"\n💾 Dataset nettoyé sauvegardé → {output_path} ({size_mb:.1f} Mo)")
+
+    # Métadonnées de fraîcheur pour le dashboard (« Données à jour du X »)
+    write_refresh_metadata(df)
 
     # Résumé final
     logger.info(f"\n{'='*60}")
