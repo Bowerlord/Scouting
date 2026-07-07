@@ -67,17 +67,15 @@ jobs:
           add-paths: |
             reports/metrics/*.csv
             reports/metrics/*.json
+            reports/metrics/*.jsonl
+            reports/metrics/monitoring_report.md
           branch: chore/data-refresh
           delete-branch: true
           commit-message: "chore(data): rafraîchissement hebdomadaire des snapshots Oracle's Elixir"
           title: "chore(data): rafraîchissement des snapshots"
-          body: |
-            PR automatique générée par le workflow Data Refresh.
-
-            Vérifier avant merge :
-            - les métriques dans `reports/metrics/talent_score_results.json`
-              (PR-AUC cohérent avec les runs précédents),
-            - la date `data_max_date` dans `reports/metrics/refresh_metadata.json`.
+          # Corps de la PR = rapport de monitoring généré par le pipeline
+          # (delta PR-AUC vs run précédent + alerte de dégradation éventuelle).
+          body-path: reports/metrics/monitoring_report.md
 
       - name: Ouvrir une issue en cas d'échec
         if: failure()

@@ -65,6 +65,11 @@ from src.config import (
     XGB_PARAMS,
 )
 from src.utils.logger import logger
+from src.utils.monitoring import (
+    append_metrics_history,
+    compare_with_previous,
+    render_monitoring_report,
+)
 
 warnings.filterwarnings("ignore")
 
@@ -618,6 +623,28 @@ def run_talent_scoring_pipeline():
             ensure_ascii=False,
         )
     logger.info(f"Metriques sauvegardees : {metrics_path}")
+
+    # ── Monitoring : historisation et comparaison avec le run précédent ─────
+    append_metrics_history(
+        {
+            "best_model": best_name,
+            "pr_auc": float(results_df.iloc[0]["pr_auc"]),
+            "roc_auc": float(results_df.iloc[0]["roc_auc"]),
+            "brier_calibrated": round(float(brier_calibrated), 4),
+            "train_size": len(X_train),
+            "test_size": len(X_test),
+            "n_train_positives": int(pos_count),
+            "n_players_scored": len(all_scores),
+        }
+    )
+    comparison = compare_with_previous()
+    render_monitoring_report(comparison)
+    if comparison["degraded"]:
+        logger.warning(
+            f"⚠️  Dégradation du PR-AUC vs run précédent : "
+            f"{comparison['previous']['pr_auc']:.4f} → "
+            f"{comparison['current']['pr_auc']:.4f}"
+        )
 
     # Scores joueurs CSV
     scores_path = METRICS_DIR / "talent_scores_players.csv"

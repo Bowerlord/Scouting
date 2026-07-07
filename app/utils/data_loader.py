@@ -62,6 +62,25 @@ def load_model_metrics() -> dict:
 
 
 @st.cache_data
+def load_metrics_history() -> list:
+    """
+    Charge l'historique des réentraînements (metrics_history.jsonl).
+
+    Une ligne JSON par run, écrite par src/utils/monitoring.py. Permet
+    d'afficher l'évolution des métriques (delta PR-AUC) dans la sidebar.
+
+    Returns:
+        list[dict]: Entrées de l'historique (ordre chronologique).
+                    Liste vide si le fichier n'existe pas.
+    """
+    path = _METRICS_DIR / "metrics_history.jsonl"
+    if not path.exists():
+        return []
+    with open(path, encoding="utf-8") as f:
+        return [json.loads(line) for line in f if line.strip()]
+
+
+@st.cache_data
 def load_refresh_metadata() -> dict:
     """
     Charge les métadonnées de fraîcheur des snapshots (refresh_metadata.json).

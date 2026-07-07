@@ -27,7 +27,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 import streamlit as st
-from utils.data_loader import load_model_metrics, load_refresh_metadata, load_talent_scores
+from utils.data_loader import (
+    load_metrics_history,
+    load_model_metrics,
+    load_refresh_metadata,
+    load_talent_scores,
+)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Configuration de la page
@@ -185,6 +190,12 @@ with st.sidebar:
         - **Split temporel** : {split_label}
         """
     )
+    # Évolution vs run précédent (metrics_history.jsonl, ≥ 2 runs requis)
+    history = load_metrics_history()
+    if len(history) >= 2:
+        delta = history[-1]["pr_auc"] - history[-2]["pr_auc"]
+        st.caption(f"PR-AUC vs run précédent : {delta:+.4f}")
+
     st.markdown("---")
 
     # Indicateur de fraîcheur des snapshots (absent → omis silencieusement)
