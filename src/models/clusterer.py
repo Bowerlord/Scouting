@@ -25,6 +25,7 @@ Usage :
 
 import json
 import warnings
+from pathlib import Path
 
 import joblib
 import numpy as np
@@ -85,8 +86,8 @@ def _archetype_label(row: pd.Series) -> str:
 # 1. Chargement
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def load_data() -> pd.DataFrame:
-    path = PROCESSED_DATA_DIR / "features_players.csv"
+def load_data(features_path: Path | None = None) -> pd.DataFrame:
+    path = features_path if features_path is not None else PROCESSED_DATA_DIR / "features_players.csv"
     if not path.exists():
         raise FileNotFoundError("features_players.csv introuvable. Lancez `make features`.")
     df = pd.read_csv(path)

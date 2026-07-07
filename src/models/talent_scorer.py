@@ -26,6 +26,7 @@ Usage :
 
 import json
 import warnings
+from pathlib import Path
 
 import joblib
 import numpy as np
@@ -95,9 +96,10 @@ FEATURE_COLS = [
 TARGET_COL = "promoted_to_lec"
 
 
-def load_features() -> pd.DataFrame:
+def load_features(features_path: Path | None = None) -> pd.DataFrame:
     """Charge le dataset de features généré par la Phase 4."""
-    features_path = PROCESSED_DATA_DIR / "features_players.csv"
+    if features_path is None:
+        features_path = PROCESSED_DATA_DIR / "features_players.csv"
     if not features_path.exists():
         raise FileNotFoundError(
             f"❌ {features_path} introuvable. Lancez d'abord `make features`."

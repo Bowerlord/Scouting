@@ -29,6 +29,8 @@ Usage :
   python -m src.data.feature_engineering
 """
 
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 
@@ -39,7 +41,7 @@ from src.utils.logger import logger
 # 1. Chargement et Préparation Initiale
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def load_cleaned_data() -> pd.DataFrame:
+def load_cleaned_data(data_path: Path | None = None) -> pd.DataFrame:
     """
     Charge le dataset nettoyé issu de la Phase 2/3.
     Gère également la conversion des types booléens qui pourraient avoir été
@@ -47,7 +49,8 @@ def load_cleaned_data() -> pd.DataFrame:
     """
     # Chemin absolu depuis config.py : le module fonctionne quel que soit
     # le répertoire courant (contrairement à un chemin relatif "data/...").
-    data_path = INTERIM_DATA_DIR / "cleaned_matches.csv"
+    if data_path is None:
+        data_path = INTERIM_DATA_DIR / "cleaned_matches.csv"
     if not data_path.exists():
         raise FileNotFoundError(
             f"❌ {data_path} n'existe pas. Veuillez exécuter `make clean` d'abord."
@@ -213,14 +216,16 @@ def add_zscores(df: pd.DataFrame) -> pd.DataFrame:
 # 4. Orchestrateur Principal
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def run_feature_engineering_pipeline():
+def run_feature_engineering_pipeline(
+    input_path: Path | None = None, output_path: Path | None = None
+) -> pd.DataFrame:
     """Point d'entrée du module, exécute toutes les étapes dans l'ordre."""
     logger.info("============================================================")
     logger.info("⚙️  KCORP SCOUTING PIPELINE — PHASE 4 : FEATURE ENGINEERING")
     logger.info("============================================================")
 
     # Étape 1
-    df = load_cleaned_data()
+    df = load_cleaned_data(data_path=input_path)
 
     # Étape 2
     df = calculate_kill_participation(df)
@@ -232,17 +237,20 @@ def run_feature_engineering_pipeline():
     featured_df = add_zscores(player_df)
 
     # Sauvegarde
-    PROCESSED_DATA_DIR.mkdir(parents=True, exist_ok=True)
-    out_file = PROCESSED_DATA_DIR / "features_players.csv"
+    if output_path is None:
+        output_path = PROCESSED_DATA_DIR / "features_players.csv"
+    output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    featured_df.to_csv(out_file, index=False)
+    featured_df.to_csv(output_path, index=False)
 
     logger.info("============================================================")
     logger.info("✅ FEATURE ENGINEERING TERMINÉ")
     logger.info(f"   Lignes (Joueurs/Split) : {len(featured_df):,}")
     logger.info(f"   Colonnes générées      : {len(featured_df.columns)}")
-    logger.info(f"   Fichier sauvegardé     : {out_file}")
+    logger.info(f"   Fichier sauvegardé     : {output_path}")
     logger.info("============================================================")
+
+    return featured_df
 
 if __name__ == "__main__":
     run_feature_engineering_pipeline()

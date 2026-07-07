@@ -50,6 +50,16 @@ select = ["E", "F", "I", "W"]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 
+[tool.coverage.run]
+source = ["src"]
+# Modules réseau (téléchargement, API Cargo) et tracés matplotlib :
+# non exercés par la suite de tests, exclus de la mesure.
+omit = [
+    "src/visualization/*",
+    "src/data/leaguepedia.py",
+    "src/data/downloader.py",
+]
+
 [tool.pyright]
 include = ["src", "notebooks", "tests"]
 extraPaths = ["."]

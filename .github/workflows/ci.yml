@@ -37,10 +37,12 @@ jobs:
         # On garde la CI rapide et fiable. umap-learn est optionnel (test skippé).
         run: |
           python -m pip install --upgrade pip
-          pip install pandas numpy scikit-learn joblib loguru requests pytest ruff
+          pip install pandas numpy scikit-learn joblib loguru requests pytest pytest-cov ruff
 
       - name: Lint (ruff)
         run: ruff check src/ tests/
 
-      - name: Tests unitaires (pytest)
-        run: pytest tests/ -v
+      - name: Tests (pytest + couverture)
+        # Seuil = couverture mesurée (65%) − 5 pts, à relever au fil des ajouts.
+        # Périmètre de mesure défini dans pyproject.toml ([tool.coverage.run]).
+        run: pytest tests/ -v --cov=src --cov-report=term-missing --cov-fail-under=60
