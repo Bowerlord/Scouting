@@ -27,7 +27,7 @@ Ce projet explore cette question en construisant deux outils complémentaires :
 - **Données réelles** : Pas de datasets de Kaggle — on travaille avec des données brutes de matchs professionnels
 - **Pipeline complet** : De l'acquisition des données au modèle final, en passant par le nettoyage et le feature engineering
 - **Problème concret** : Le scouting dans l'esport est un vrai besoin industriel
-- **Multi-approche ML** : Supervisé + Non-supervisé + Deep Learning comparatif
+- **Multi-approche ML** : Supervisé (Talent Score) + Non-supervisé (clustering par archétypes)
 
 ---
 
@@ -270,8 +270,6 @@ Les données proviennent de deux sources principales :
 |---|---|
 | **Data** | Python, Pandas, NumPy |
 | **ML classique** | Scikit-Learn, XGBoost |
-| **Deep Learning** | PyTorch |
-| **Explicabilité** | SHAP |
 | **Réduction dim.** | UMAP, PCA |
 | **Visualisation** | Matplotlib, Seaborn, Plotly |
 | **Logging** | Loguru |
@@ -315,7 +313,7 @@ kcorp-scouting/
 │   ├── pages/                       # Leaderboard, Profil Joueur, Scout Mode
 │   └── utils/                       # Chargement des résultats (cache)
 │
-├── models/                          # Modèles sauvegardés (.pkl, .pt)
+├── models/                          # Modèles sauvegardés (.pkl)
 ├── reports/                         # Figures et métriques
 ├── tests/                           # Tests unitaires
 ├── .streamlit/                      # Config du dashboard (thème)

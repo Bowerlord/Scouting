@@ -14,7 +14,7 @@ Ce document décrit les sources de données utilisées dans le projet, leur form
 | **Granularité** | ~100+ colonnes par ligne (1 ligne = 1 joueur dans 1 match) |
 | **Couverture temporelle** | Depuis 2014. **Nous utilisons 2024-2026 uniquement.** |
 | **Licence** | Gratuit pour usage personnel/éducatif |
-| **Taille approximative** | ~150-200 Mo par année |
+| **Taille approximative** | ~25-80 Mo par année (2026 partiel : ~24 Mo) |
 
 ### Colonnes utilisées
 
@@ -24,7 +24,7 @@ Les colonnes clés sont documentées dans `src/config.py` (variable `KEY_COLUMNS
 - **Résultat** : `result` (1 = victoire, 0 = défaite)
 - **Stats de laning (early game)** : `csdiffat15`, `golddiffat15`, `xpdiffat15`
 - **Stats globales** : `kills`, `deaths`, `assists`, `dpm`, `cspm`, `vspm`
-- **Stats d'efficacité** : `damageshare`, `killparticipation`, `earnedgoldshare`
+- **Stats d'efficacité** : `damageshare`, `killparticipation` (absente des exports récents — recalculée en feature engineering), `earnedgoldshare`
 - **Durée** : `gamelength` (en secondes)
 
 ### Téléchargement
