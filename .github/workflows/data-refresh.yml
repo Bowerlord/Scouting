@@ -1,0 +1,94 @@
+name: Data Refresh
+
+# Rafraîchissement hebdomadaire des snapshots du dashboard :
+# télécharge les CSV Oracle's Elixir, ré-exécute tout le pipeline
+# (nettoyage → features → Talent Score → clustering) et ouvre une PR
+# avec les artefacts régénérés de reports/metrics/.
+#
+# Notes de conception :
+# - requirements.txt complet (xgboost + umap-learn) pour que les snapshots
+#   soient identiques à un run local ; runtime attendu ≈ 10-20 min
+#   (~175 Mo de téléchargement + RandomizedSearchCV 60×5 sur ~740 lignes).
+# - Limitation GitHub : une PR créée avec GITHUB_TOKEN ne déclenche PAS le
+#   workflow CI. Pour que la CI tourne sur la PR de refresh, créer un PAT
+#   fine-grained (contents + pull-requests en écriture) dans le secret
+#   DATA_REFRESH_TOKEN ; sinon lancer la CI manuellement (workflow_dispatch).
+# - create-pull-request est un no-op s'il n'y a aucun diff ; generated_at
+#   (date seule) change à chaque run, donc une PR s'ouvre chaque semaine et
+#   porte au minimum la mise à jour de fraîcheur.
+# - En cas d'échec, une issue est ouverte avec le lien vers le run. Causes
+#   probables : ID Google Drive expiré (src/config.py, GOOGLE_DRIVE_IDS) ou
+#   dérive de schéma Oracle's Elixir (désormais détectée par
+#   src/data/schema.py qui fait échouer le pipeline bruyamment).
+
+on:
+  schedule:
+    - cron: "0 6 * * 1" # lundi 06:00 UTC, hebdomadaire
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  refresh:
+    name: Pipeline complet + PR snapshots
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout du dépôt
+        uses: actions/checkout@v4
+
+      - name: Installation de Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Installation des dépendances (complètes)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Pipeline complet
+        run: |
+          python -m src.data.downloader
+          python -m src.data.cleaner
+          python -m src.data.feature_engineering
+          python -m src.models.talent_scorer
+          python -m src.models.clusterer
+
+      - name: Ouvrir une PR avec les snapshots régénérés
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.DATA_REFRESH_TOKEN || secrets.GITHUB_TOKEN }}
+          add-paths: |
+            reports/metrics/*.csv
+            reports/metrics/*.json
+          branch: chore/data-refresh
+          delete-branch: true
+          commit-message: "chore(data): rafraîchissement hebdomadaire des snapshots Oracle's Elixir"
+          title: "chore(data): rafraîchissement des snapshots"
+          body: |
+            PR automatique générée par le workflow Data Refresh.
+
+            Vérifier avant merge :
+            - les métriques dans `reports/metrics/talent_score_results.json`
+              (PR-AUC cohérent avec les runs précédents),
+            - la date `data_max_date` dans `reports/metrics/refresh_metadata.json`.
+
+      - name: Ouvrir une issue en cas d'échec
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create \
+            --repo "${{ github.repository }}" \
+            --title "Échec du data refresh du $(date +%F)" \
+            --body "Le workflow Data Refresh a échoué : ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+          Causes probables :
+          - ID Google Drive expiré ou modifié (src/config.py, GOOGLE_DRIVE_IDS)
+          - dérive de schéma Oracle's Elixir (voir src/data/schema.py — le message d'erreur du run liste les colonnes en cause)"

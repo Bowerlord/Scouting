@@ -8,6 +8,7 @@
 
 # --- Tests ---
 pytest>=7.0
+pytest-cov>=4.0
 
 # --- Qualité du code ---
 black>=23.0

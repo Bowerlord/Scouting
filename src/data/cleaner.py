@@ -34,6 +34,8 @@ Usage :
 """
 
 
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 
@@ -50,14 +52,18 @@ from src.config import (
     TOP_LEAGUE,
 )
 from src.data.leaguepedia import load_career_data
+from src.data.schema import SchemaValidationError, validate_raw_schema
 from src.utils.logger import logger
+from src.utils.metadata import write_refresh_metadata
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Chargement des données brutes
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-def load_raw_data(years: list[int] | None = None) -> pd.DataFrame:
+def load_raw_data(
+    years: list[int] | None = None, raw_dir: Path | None = None
+) -> pd.DataFrame:
     """
     Charge et concatène les CSV Oracle's Elixir pour les années spécifiées.
 
@@ -71,21 +77,24 @@ def load_raw_data(years: list[int] | None = None) -> pd.DataFrame:
 
     Args:
         years: Années à charger. Par défaut : DATA_YEARS de config.py
+        raw_dir: Répertoire des CSV bruts. Par défaut : RAW_DATA_DIR
 
     Returns:
         DataFrame concaténé avec toutes les années
     """
     if years is None:
         years = DATA_YEARS
+    if raw_dir is None:
+        raw_dir = RAW_DATA_DIR
 
     dfs = []
     for year in years:
         filename = f"{year}_LoL_esports_match_data_from_OraclesElixir.csv"
-        filepath = RAW_DATA_DIR / filename
+        filepath = raw_dir / filename
 
         if not filepath.exists():
             logger.warning(
-                f"⚠️  Fichier {filename} introuvable dans {RAW_DATA_DIR}. "
+                f"⚠️  Fichier {filename} introuvable dans {raw_dir}. "
                 f"Avez-vous exécuté 'make data' ? Année {year} ignorée."
             )
             continue
@@ -93,9 +102,14 @@ def load_raw_data(years: list[int] | None = None) -> pd.DataFrame:
         logger.info(f"📂 Chargement de {filename}...")
         try:
             df = pd.read_csv(filepath, low_memory=False)
+            validate_raw_schema(df, source=filename)
             df["_source_year"] = year  # Traçabilité : d'où vient chaque ligne
             dfs.append(df)
             logger.info(f"   → {len(df):,} lignes, {len(df.columns)} colonnes")
+        except SchemaValidationError:
+            # Dérive de schéma Oracle's Elixir : on échoue bruyamment plutôt
+            # que de produire des snapshots faux avec les années restantes.
+            raise
         except Exception as e:
             logger.error(f"❌ Erreur lors du chargement de {filename} : {e}")
             continue
@@ -640,7 +654,12 @@ def validate_dataset(df: pd.DataFrame) -> bool:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-def run_cleaning_pipeline() -> pd.DataFrame:
+def run_cleaning_pipeline(
+    years: list[int] | None = None,
+    raw_dir: Path | None = None,
+    output_path: Path | None = None,
+    metadata_path: Path | None = None,
+) -> pd.DataFrame:
     """
     Exécute le pipeline complet de nettoyage.
 
@@ -648,6 +667,14 @@ def run_cleaning_pipeline() -> pd.DataFrame:
       1-8. Chargement → découverte des ligues → filtrages → sélection de
            colonnes → normalisation des noms → valeurs manquantes → target datée
       Puis : validation du dataset et sauvegarde dans data/interim/
+
+    Args:
+        years: Années à charger. Par défaut : DATA_YEARS de config.py
+        raw_dir: Répertoire des CSV bruts. Par défaut : RAW_DATA_DIR
+        output_path: Chemin du CSV nettoyé. Par défaut :
+            data/interim/cleaned_matches.csv
+        metadata_path: Chemin du JSON de fraîcheur. Par défaut :
+            reports/metrics/refresh_metadata.json
 
     Returns:
         DataFrame nettoyé
@@ -658,7 +685,7 @@ def run_cleaning_pipeline() -> pd.DataFrame:
 
     # 1. Charger les données brutes
     logger.info("📂 ÉTAPE 1/8 — Chargement des données brutes")
-    df = load_raw_data()
+    df = load_raw_data(years=years, raw_dir=raw_dir)
     if df.empty:
         return df
 
@@ -694,11 +721,15 @@ def run_cleaning_pipeline() -> pd.DataFrame:
     validate_dataset(df)
 
     # Sauvegarder
-    INTERIM_DATA_DIR.mkdir(parents=True, exist_ok=True)
-    output_path = INTERIM_DATA_DIR / "cleaned_matches.csv"
+    if output_path is None:
+        output_path = INTERIM_DATA_DIR / "cleaned_matches.csv"
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(output_path, index=False)
     size_mb = output_path.stat().st_size / (1024 * 1024)
     logger.success(f"\n💾 Dataset nettoyé sauvegardé → {output_path} ({size_mb:.1f} Mo)")
+
+    # Métadonnées de fraîcheur pour le dashboard (« Données à jour du X »)
+    write_refresh_metadata(df, output_path=metadata_path)
 
     # Résumé final
     logger.info(f"\n{'='*60}")

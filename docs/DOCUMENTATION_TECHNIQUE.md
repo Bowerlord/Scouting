@@ -68,7 +68,7 @@ Principe clé : **le dashboard lit des snapshots pré-calculés**, jamais les mo
 | `RF_PARAMS`, `XGB_PARAMS` | dicts | Hyperparamètres de base (le RF est ensuite tuné). |
 | `CLUSTER_PARAMS["k_range"]` | `range(3, 12)` | Valeurs de k testées par silhouette. |
 
-Paramètres **morts** (aucun code ne les consomme) : `AUTOENCODER_PARAMS`, `FEEDFORWARD_PARAMS`, `CLUSTER_PARAMS["dbscan_*"]` — vestiges d'itérations abandonnées.
+Les paramètres d'itérations abandonnées (configs PyTorch `AUTOENCODER_PARAMS`/`FEEDFORWARD_PARAMS`, DBSCAN) ont été retirés de `config.py` — K-Means par position est l'approche retenue.
 
 ---
 
@@ -78,6 +78,7 @@ Paramètres **morts** (aucun code ne les consomme) : `AUTOENCODER_PARAMS`, `FEED
 
 - Télécharge les CSV Oracle's Elixir (~75 Mo/année) depuis Google Drive, avec gestion du token anti-virus des gros fichiers, retry avec backoff (3 tentatives), et **cache local** : un fichier existant > 1 Mo n'est pas re-téléchargé (`force=True` pour forcer).
 - Garde-fou : un fichier < 1 Ko contenant du HTML est détecté comme page d'erreur et supprimé.
+- **Validation de schéma** (`src/data/schema.py`) : au chargement (`load_raw_data`), chaque CSV est vérifié contre les colonnes requises (`KEY_COLUMNS` moins les optionnelles connues comme `killparticipation`) et la coercibilité numérique d'un sous-ensemble de colonnes. Une dérive de format lève `SchemaValidationError` et stoppe le pipeline au lieu de produire des snapshots faux.
 
 ### 3.2 Nettoyage — `src/data/cleaner.py` (`run_cleaning_pipeline`)
 
@@ -88,8 +89,8 @@ Paramètres **morts** (aucun code ne les consomme) : `AUTOENCODER_PARAMS`, `FEED
 4. **Filtrage joueurs** : suppression des lignes `position == "team"` (2 par match). → ~41 k lignes.
 5. **Sélection de colonnes** : 166 → ~34 (`KEY_COLUMNS`).
 6. **Normalisation des noms** : `strip().lower()` ; l'original est gardé dans `playername_original` (non utilisé en aval — le dashboard affiche donc les pseudos en minuscules).
-7. **Valeurs manquantes** : drop si NaN d'identité ; imputation des stats par **médiane de ligue** (puis médiane globale en repli) ; catégorielles → `"unknown"`.
-8. **Target datée** (voir ci-dessous), puis validation (assertions loggées) et sauvegarde → `data/interim/cleaned_matches.csv`.
+7. **Valeurs manquantes** : drop si NaN d'identité ; imputation des stats par **médiane de ligue × année** (puis médiane globale en repli) ; catégorielles → `"unknown"`.
+8. **Target datée** (voir ci-dessous), puis validation (assertions loggées) et sauvegarde → `data/interim/cleaned_matches.csv`. Le pipeline écrit aussi `reports/metrics/refresh_metadata.json` (`src/utils/metadata.py`) : date max des données, date d'exécution, volumétrie — affiché comme indicateur de fraîcheur dans la sidebar du dashboard.
 
 ### 3.3 Target datée — cœur méthodologique
 
@@ -118,8 +119,6 @@ promoted_to_lec(match ERL) = True  ssi
    - Filtre de représentativité : `games_played ≥ 5`, sinon la ligne est exclue (311 lignes exclues → 2 438 lignes joueur/split).
 3. **Z-scores** par groupe `[league, _source_year, split, position]` : `(x − μ_groupe) / σ_groupe`, 0 si σ = 0 ou groupe singleton. C'est ce qui rend les joueurs comparables entre ligues de niveaux différents.
 4. Sortie → `data/processed/features_players.csv` (2 438 × 31).
-
-⚠️ Ce module utilise des chemins **relatifs** (`data/interim/...`) et non les constantes de `config.py` : il doit être lancé depuis la racine du projet.
 
 ---
 
@@ -182,8 +181,8 @@ Identifiants identiques + `cluster_position` (int), `cluster` (alias), `archetyp
 
 ## 6. Dashboard Streamlit — `app/`
 
-- **`utils/data_loader.py`** : 3 loaders (`load_talent_scores`, `load_clustering_results`, `load_cluster_profiles`) décorés `@st.cache_data` (Streamlit ré-exécute tout le script à chaque interaction). Chemins résolus relativement au fichier (`reports/metrics/` trois niveaux au-dessus). Erreur explicite si un CSV manque (avec la commande pour le régénérer). Helpers non cachés : `get_archetype`, `list_archetypes`.
-- **`app.py`** : accueil, métriques globales, guide de navigation. La sidebar contient des chiffres codés en dur (voir revue de code — à synchroniser avec `talent_score_results.json`).
+- **`utils/data_loader.py`** : 4 loaders (`load_model_metrics`, `load_talent_scores`, `load_clustering_results`, `load_cluster_profiles`) décorés `@st.cache_data` (Streamlit ré-exécute tout le script à chaque interaction). Chemins résolus relativement au fichier (`reports/metrics/` trois niveaux au-dessus). Erreur explicite si un CSV manque (avec la commande pour le régénérer). Helpers non cachés : `get_archetype`, `list_archetypes`.
+- **`app.py`** : accueil, métriques globales, guide de navigation. Les chiffres de la sidebar (meilleur modèle, PR-AUC, années train/test) sont lus depuis `talent_score_results.json` via `load_model_metrics()` — rien n'est codé en dur.
 - **`pages/1_Leaderboard.py`** : tableau trié par `talent_score` avec filtres (position, ligue, année, score minimum 0-100) + bar chart top 20 Plotly.
 - **`pages/2_Profil_Joueur.py`** : sélection d'un joueur → la ligne « peak » (meilleur talent_score) est affichée : métriques, percentile (« Top X % des {POS} ERL »), archétype (via `clustering_results.csv`, repli sur `cluster_profiles.json`), radar chart Plotly des z-scores, historique des saisons.
 - **`pages/3_Scout_Mode.py`** : (1) shortlist multi-critères (position/archétype/ligue/score), (2) « joueurs similaires » = même cluster K-Means + même position que la saison peak du joueur de référence, avec scatter comparatif. La jointure scores↔clusters se fait sur `playername+position+_source_year+split` pour associer chaque saison à SON cluster.
@@ -196,7 +195,10 @@ Identifiants identiques + `cluster_position` (int), `cluster` (alias), `archetyp
 
 - **`tests/test_features.py`** (13 tests) : z-scores intra-groupe (moyenne ≈ 0, pas de fuite inter-ligue, groupes singletons), format de la target, **5 tests de la target datée** (pré-promotion positif, ex-LEC relégué négatif, hors horizon négatif, jamais promu négatif, MIN des dates LEC), structure du dataset.
 - **`tests/test_models.py`** (15 tests) : isolation du split OOT, probabilités valides, PR-AUC > baseline, importances RF sommant à 1, K-Means (labels valides, pas de cluster vide), UMAP (skippé si non installé), similarity search, **percentiles** (plage (0,100], max=100 par position), **échelle 0-100 du talent_score**, **non-fuite des groupes** en `StratifiedGroupKFold`.
+- **`tests/test_integration_pipeline.py`** (28 tests) : exerce les **vraies fonctions** de `src/` de bout en bout sur la fixture synthétique `tests/fixtures/oracle_sample.csv` (générée par `generate_fixture.py`, seedée, committée) — validation de schéma, `run_cleaning_pipeline` complet avec cas de target scriptés (promu dans l'horizon, ex-LEC relégué, promu hors horizon, jamais promu), feature engineering (KP recalculée, agrégation, z-scores), split OOT + LR calibrée + scoring, `cluster_position` (fallback PCA), métadonnées de fraîcheur. Les fixtures pytest partagées sont dans `tests/conftest.py`.
+- **Couverture** : `pytest --cov=src` en CI avec seuil `--cov-fail-under=60` (couverture mesurée ~65 % ; périmètre dans `pyproject.toml`, modules réseau/plots exclus). Seuil à relever au fil des ajouts.
 - **CI GitHub Actions** (`.github/workflows/ci.yml`) : matrice Python 3.10/3.11, `ruff check src/ tests/` + `pytest tests/`. Dépendances volontairement minimales (pas de torch/xgboost/umap — `xgboost` est un import optionnel dans `talent_scorer`, le test UMAP se skippe). Déclencheurs : push sur `main`, PR, manuel.
+- **Data Refresh GitHub Actions** (`.github/workflows/data-refresh.yml`) : chaque lundi (cron) ou à la demande, ré-exécute le pipeline complet avec les dépendances complètes (xgboost + umap) et ouvre une PR `chore/data-refresh` contenant les snapshots régénérés de `reports/metrics/`. En cas d'échec (ID Drive expiré, dérive de schéma), une issue est ouverte avec le lien du run. Limitation : une PR créée avec `GITHUB_TOKEN` ne déclenche pas la CI — configurer un PAT dans le secret `DATA_REFRESH_TOKEN` pour la déclencher automatiquement.
 - **Makefile** : cibles chaînées `data → clean → features → train/cluster`, `run-pipeline` (artefacts dashboard), `app`, `test`, `lint`, `format`. Utilise `python` (sous Windows sans alias, préférer `py -m …`).
 - **Lint** : ruff (`E, F, I, W`, ligne 120). Formatage : black (120).
 
@@ -206,8 +208,6 @@ Identifiants identiques + `cluster_position` (int), `cluster` (alias), `archetyp
 
 1. **Censure à droite** de la target (cf. §3.3) : les splits récents sont sous-étiquetés.
 2. **Matching par pseudo** : la target et les jointures reposent sur `playername` en minuscules — deux joueurs homonymes seraient fusionnés ; un changement de pseudo casse l'historique. Pas de fuzzy matching Oracle's ↔ Leaguepedia.
-3. **Imputation pré-split** : les médianes de ligue (étape 7 du nettoyage) sont calculées sur toutes les années confondues — vecteur de fuite mineur mais réel.
-4. **2026 non évalué** : `TEST_YEARS=[2025]` ; les lignes 2026 sont scorées sans jamais contribuer aux métriques.
-5. **Silhouettes faibles** (~0,15) : les archétypes sont des tendances, pas des catégories nettes.
-6. **Petit dataset** (739 lignes de train, 49 positifs) : variance élevée des métriques ; la LR bat les modèles complexes.
-7. Les points ouverts détectés lors de la revue de code de juillet 2026 (bugs dans `src/visualization/`, chiffres codés en dur dans `app.py`, dépendances inutilisées…) sont suivis hors documentation — voir le rapport de revue.
+3. **2026 non évalué** : `TEST_YEARS=[2025]` ; les lignes 2026 sont scorées sans jamais contribuer aux métriques.
+4. **Silhouettes faibles** (~0,15) : les archétypes sont des tendances, pas des catégories nettes.
+5. **Petit dataset** (739 lignes de train, 49 positifs) : variance élevée des métriques ; la LR bat les modèles complexes.

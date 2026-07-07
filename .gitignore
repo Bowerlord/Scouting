@@ -26,6 +26,11 @@ models/*.joblib
 !reports/metrics/talent_scores_players.csv
 !reports/metrics/clustering_results.csv
 
+# --- Exception : fixture des tests d'intégration ---
+# Petit CSV synthétique (généré par tests/fixtures/generate_fixture.py),
+# nécessaire pour exécuter la suite de tests sur un clone frais.
+!tests/fixtures/*.csv
+
 # --- Python ---
 __pycache__/
 *.py[cod]
@@ -59,3 +64,7 @@ desktop.ini
 # --- Logs ---
 logs/
 *.log
+
+# --- Couverture de tests ---
+.coverage
+htmlcov/

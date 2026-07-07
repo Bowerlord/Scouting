@@ -27,7 +27,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 import streamlit as st
-from utils.data_loader import load_model_metrics, load_talent_scores
+from utils.data_loader import load_model_metrics, load_refresh_metadata, load_talent_scores
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Configuration de la page
@@ -186,4 +186,17 @@ with st.sidebar:
         """
     )
     st.markdown("---")
+
+    # Indicateur de fraîcheur des snapshots (absent → omis silencieusement)
+    refresh_meta = load_refresh_metadata()
+    if refresh_meta.get("data_max_date"):
+        generated_label = (
+            f" (pipeline exécuté le {refresh_meta['generated_at']})"
+            if refresh_meta.get("generated_at")
+            else ""
+        )
+        st.caption(
+            f"📅 Données à jour du {refresh_meta['data_max_date']}{generated_label}"
+        )
+
     st.caption("KCorp Scouting Tool")
