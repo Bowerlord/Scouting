@@ -58,7 +58,7 @@ Principe clé : **le dashboard lit des snapshots pré-calculés**, jamais les mo
 |---|---|---|
 | `DATA_YEARS` | `[2024, 2025, 2026]` | Années téléchargées et chargées (2026 partiel). |
 | `GOOGLE_DRIVE_IDS` | dict {année: id} | IDs des CSV Oracle's Elixir sur Google Drive. |
-| `ERL_DIV1_LEAGUES` | LFL, PRM, LVP SL, NLC, TCL | ERLs division 1 ciblées. |
+| `ERL_DIV1_LEAGUES` | LFL, PRM, LVP SL, NLC, TCL + ERLs mineures (LPLOL, Hitpoint Masters, Ultraliga, PG Nationals, EBL, GLL, AL) | ERLs division 1 ciblées. EMEA Masters exclu (doublonnerait les joueurs). ⚠️ Les chiffres cités dans cette doc (lignes train/test, joueurs scorés) datent du périmètre 5 ligues — ils seront rafraîchis au prochain run du pipeline. |
 | `ERL_DIV2_LEAGUES` | LFL2 | Seule Div 2 présente dans les données. |
 | `TOP_LEAGUE` | `"LEC"` | Ligue cible de la target variable. |
 | `TRAIN_YEARS` / `TEST_YEARS` | `[2024]` / `[2025]` | Split temporel Out-of-Time. ⚠️ 2026 n'est ni en train ni en test : ses lignes sont scorées mais jamais évaluées. |

@@ -260,7 +260,17 @@ Les données proviennent de deux sources principales :
 | 🇪🇸 Espagne | LVP SuperLiga | ✅ Présente |
 | 🇬🇧 UK/Nordics | NLC | ✅ Présente |
 | 🇹🇷 Turquie | TCL | ✅ Présente |
+| 🇵🇹 Portugal | LPLOL | 🔄 Ajoutée — snapshots au prochain refresh |
+| 🇨🇿🇸🇰 Tchéquie/Slovaquie | Hitpoint Masters | 🔄 Ajoutée — snapshots au prochain refresh |
+| 🇵🇱 Pologne | Ultraliga | 🔄 Ajoutée — snapshots au prochain refresh |
+| 🇮🇹 Italie | PG Nationals | 🔄 Ajoutée — snapshots au prochain refresh |
+| 🇷🇸 Balkans | EBL | 🔄 Ajoutée — code à confirmer au refresh |
+| 🇬🇷 Grèce | GLL | 🔄 Ajoutée — code à confirmer au refresh |
+| 🌍 MENA | Arabian League | 🔄 Ajoutée — code à confirmer au refresh |
 | 🇪🇺 Europe | **LEC** *(target variable)* | ✅ Présente |
+
+> Le tournoi inter-ERL **EMEA Masters** est volontairement exclu : ses matchs
+> doublonneraient les joueurs des ligues membres.
 
 ---
 
@@ -426,7 +436,7 @@ faux. La sidebar du dashboard affiche la fraîcheur des données
 - [ ] 📈 Modèle temporel (LSTM) pour capturer la progression
 - [x] 📊 Calibration du Talent Score + percentiles de rang par position *(voir Phase 5)*
 - [x] 🧪 Cross-validation groupée par joueur (StratifiedGroupKFold) *(voir Phase 5)*
-- [ ] 🌍 Extension aux ERLs mineures (Benelux, Italie, etc.)
+- [x] 🌍 Extension aux ERLs mineures (Portugal, Tchéquie, Pologne, Italie, Balkans, Grèce, MENA) *(voir Ligues couvertes)*
 
 ---
 

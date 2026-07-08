@@ -27,6 +27,15 @@ Les colonnes clés sont documentées dans `src/config.py` (variable `KEY_COLUMNS
 - **Stats d'efficacité** : `damageshare`, `killparticipation` (absente des exports récents — recalculée en feature engineering), `earnedgoldshare`
 - **Durée** : `gamelength` (en secondes)
 
+### Ligues extraites
+
+Le périmètre est défini par `ERL_DIV1_LEAGUES` / `ERL_DIV2_LEAGUES` / `TOP_LEAGUE`
+dans `src/config.py` : LFL, LFL2, PRM, LVP SL, NLC, TCL, les ERLs mineures
+(LPLOL, Hitpoint Masters, Ultraliga, PG Nationals, EBL, GLL, Arabian League)
+et la LEC (target). Les clés doivent correspondre exactement aux valeurs de la
+colonne `league` des CSV ; une ligue introuvable est signalée en warning par le
+pipeline de nettoyage. Le tournoi inter-ERL EMEA Masters est exclu.
+
 ### Téléchargement
 
 Les CSV sont hébergés sur Google Drive. Le module `src/data/downloader.py` gère :

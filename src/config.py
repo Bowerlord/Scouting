@@ -61,12 +61,27 @@ GOOGLE_DRIVE_IDS = {
 # ══════════════════════════════════════════════════════════════════════════════
 
 # Ligues ERL Division 1 (niveau "LFL-like" dans chaque pays)
+# Les clés doivent correspondre EXACTEMENT aux valeurs de la colonne `league`
+# des CSV Oracle's Elixir (mêmes libellés que les pages byTournament du site).
+# Une clé absente des données déclenche un warning de filter_target_leagues
+# (+ tentative de match partiel) — vérifier les logs du workflow Data Refresh
+# après tout ajout. EMEA Masters ("EM") est volontairement exclu : c'est le
+# tournoi inter-ERL, ses lignes doublonneraient les joueurs des ligues membres.
 ERL_DIV1_LEAGUES = {
     "LFL": "🇫🇷 France — La Ligue Française de LoL",
     "PRM": "🇩🇪 Allemagne — Prime League Pro Division",
     "LVP SL": "🇪🇸 Espagne — Liga de Videojuegos Profesional SuperLiga",
     "NLC": "🇬🇧 UK/Nordics — Northern League of Legends Championship",
     "TCL": "🇹🇷 Turquie — Turkish Championship League",
+    # ── ERLs mineures (libellés vérifiés sur oracleselixir.com) ──
+    "LPLOL": "🇵🇹 Portugal — Liga Portuguesa de League of Legends",
+    "Hitpoint Masters": "🇨🇿🇸🇰 Tchéquie/Slovaquie — Hitpoint Masters",
+    "Ultraliga": "🇵🇱 Pologne — Ultraliga",
+    "PG Nationals": "🇮🇹 Italie — PG Nationals",
+    # ── ERLs mineures (codes OE historiques, à confirmer au prochain refresh) ──
+    "EBL": "🇷🇸 Balkans — Esports Balkan League",
+    "GLL": "🇬🇷 Grèce — Greek Legends League",
+    "AL": "🌍 MENA — Arabian League",
 }
 
 # Ligues ERL Division 2 (niveau inférieur)
