@@ -20,8 +20,12 @@ name: Data Refresh
 #     * source indisponible (quota Google Drive du compte Oracle's Elixir) :
 #       le téléchargement sort en code 75, le run se termine EN VERT avec une
 #       note dans le résumé, et personne n'est alerté. Constaté le 2026-09-03 :
-#       le quota bloque tous leurs fichiers, y compris ceux de 2016, donc
-#       aucune correction dans ce dépôt ne peut y changer quoi que ce soit.
+#       le quota bloque tous leurs fichiers, y compris ceux de 2016.
+#       ⚠️ Nuance vérifiée le même jour : ce quota ne vise que les accès
+#       ANONYMES. Un navigateur connecté à un compte Google télécharge le
+#       fichier sans problème. Piste ouverte, non testée : passer par l'API
+#       Drive avec un compte de service (clé en secret de dépôt), ce qui
+#       rendrait le refresh de nouveau pleinement automatique.
 #     * pipeline réellement cassé (ID mort, fichier corrompu, dérive de schéma) :
 #       code de sortie 1, run rouge, et commentaire sur l'issue de suivi.
 
@@ -126,7 +130,7 @@ jobs:
           BODY="Échec du run du $(date +%F) : $RUN_URL
 
           Causes possibles, par fréquence réelle observée :
-          1. **Quota Google Drive dépassé** — Google renvoie une page HTML \`Quota exceeded\` au lieu du CSV, parce que le fichier public d'Oracle's Elixir a été trop téléchargé. C'est temporaire et extérieur au dépôt : rien à corriger, le run suivant peut passer.
+          1. **Quota Google Drive dépassé** — Google renvoie une page HTML \`Quota exceeded\` au lieu du CSV : le compte qui héberge les fichiers d'Oracle's Elixir a dépassé son quota de partage. Le run suivant peut passer. À savoir : ce quota ne frappe que les accès anonymes, un navigateur connecté télécharge le fichier normalement, donc une acquisition via l'API Drive authentifiée reste une piste.
           2. ID Google Drive expiré ou partage modifié (\`GOOGLE_DRIVE_IDS\` dans \`src/config.py\`).
           3. Dérive réelle du schéma Oracle's Elixir (\`src/data/schema.py\`).
 

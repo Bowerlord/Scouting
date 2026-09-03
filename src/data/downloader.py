@@ -69,9 +69,12 @@ class DownloadOutcome(Enum):
     """Issue d'une tentative de téléchargement."""
 
     OK = "ok"
-    # Google Drive a répondu une page « Quota exceeded ». Cause externe et
-    # temporaire : le compte Drive d'Oracle's Elixir a dépassé son quota de
-    # partage, ce qui bloque TOUS ses fichiers, pas seulement les récents.
+    # Google Drive a répondu une page « Quota exceeded ». Cause externe : le
+    # compte Drive d'Oracle's Elixir a dépassé son quota de partage, ce qui
+    # bloque TOUS ses fichiers, pas seulement les récents.
+    # Nuance vérifiée le 2026-09-03 : le quota ne s'applique qu'aux accès
+    # anonymes. Un navigateur connecté télécharge le même fichier sans
+    # difficulté, donc une acquisition authentifiée reste possible.
     SOURCE_UNAVAILABLE = "source_unavailable"
     # Le contenu reçu n'est pas exploitable pour une autre raison : ID expiré,
     # partage modifié, fichier tronqué, en-tête inattendu. Là, il faut agir.
@@ -187,13 +190,18 @@ def _download_from_gdrive(file_id: str, destination: Path) -> bool:
         preview = response.text[:2000]
         if "quota" in preview.lower():
             logger.error(
-                "Google Drive a répondu « Quota exceeded » : le fichier est "
-                "temporairement indisponible parce que le compte qui l'héberge "
-                "a dépassé son quota de partage. Vérifié le 2026-09-03 : le "
-                "blocage touche TOUS les fichiers d'Oracle's Elixir, y compris "
-                "ceux de 2016 que personne ne télécharge. Ce n'est donc ni un "
-                "problème de schéma, ni un ID expiré, et il n'y a rien à "
-                "corriger dans ce dépôt."
+                "Google Drive a répondu « Quota exceeded » : le compte qui "
+                "héberge le fichier a dépassé son quota de partage. Vérifié le "
+                "2026-09-03 : le blocage touche TOUS les fichiers d'Oracle's "
+                "Elixir, y compris ceux de 2016 que personne ne télécharge. Ce "
+                "n'est donc ni un problème de schéma, ni un ID expiré.\n"
+                "Précision importante, vérifiée le même jour : ce quota ne "
+                "frappe que les téléchargements ANONYMES, ceux que fait ce "
+                "script. Le même fichier se télécharge sans problème depuis un "
+                "navigateur connecté à un compte Google. Une acquisition "
+                "authentifiée (API Drive + compte de service, clé en secret de "
+                "dépôt) est donc une piste ouverte et non testée, plutôt qu'une "
+                "impasse."
             )
             return DownloadOutcome.SOURCE_UNAVAILABLE
 
