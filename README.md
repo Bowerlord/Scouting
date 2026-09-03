@@ -1,8 +1,13 @@
 # 🏆 KCorp Scouting Tool
 
+[![Démo en ligne](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://scouting-lol-erl.streamlit.app/)
 [![CI](https://github.com/Bowerlord/Scouting/actions/workflows/ci.yml/badge.svg)](https://github.com/Bowerlord/Scouting/actions/workflows/ci.yml)
 
 > **Un outil de Machine Learning pour identifier les pépites esport dans les ligues mineures européennes de League of Legends.**
+
+### 👉 [Tester le dashboard en ligne](https://scouting-lol-erl.streamlit.app/)
+
+Trois vues interactives : **Leaderboard** (classement des 3 098 joueurs par talent score), **Profil Joueur** (radar de performance et archétype ML) et **Scout Mode** (shortlist par critères et recherche de joueurs similaires par clustering).
 
 Ce projet simule un outil de scouting data-driven pour la structure esport [Karmine Corp](https://www.karminecorp.fr/). L'objectif : analyser les performances des joueurs amateurs dans les ERLs (European Regional Leagues) et prédire lesquels ont le potentiel pour évoluer au plus haut niveau (LEC).
 
