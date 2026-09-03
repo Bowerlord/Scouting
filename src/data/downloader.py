@@ -34,6 +34,8 @@ Pourquoi un cache local ?
 
 import sys
 import time
+from dataclasses import dataclass, field
+from enum import Enum
 from pathlib import Path
 
 import requests
@@ -48,6 +50,57 @@ from src.config import (
     RETRY_DELAY,
 )
 from src.utils.logger import logger
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Résultats de téléchargement
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Code de sortie POSIX EX_TEMPFAIL : « échec temporaire, réessayer plus tard ».
+# Il sépare deux situations que le pipeline confondait, et qui n'appellent pas
+# du tout la même réaction :
+#   - la source est indisponible (quota Google Drive) → rien à corriger ici,
+#     le workflow s'arrête proprement et retentera au prochain passage ;
+#   - le pipeline est cassé (ID mort, fichier corrompu, schéma) → il faut agir,
+#     le workflow doit échouer bruyamment.
+EXIT_SOURCE_UNAVAILABLE = 75
+
+
+class DownloadOutcome(Enum):
+    """Issue d'une tentative de téléchargement."""
+
+    OK = "ok"
+    # Google Drive a répondu une page « Quota exceeded ». Cause externe et
+    # temporaire : le compte Drive d'Oracle's Elixir a dépassé son quota de
+    # partage, ce qui bloque TOUS ses fichiers, pas seulement les récents.
+    SOURCE_UNAVAILABLE = "source_unavailable"
+    # Le contenu reçu n'est pas exploitable pour une autre raison : ID expiré,
+    # partage modifié, fichier tronqué, en-tête inattendu. Là, il faut agir.
+    INVALID_CONTENT = "invalid_content"
+
+
+@dataclass
+class DownloadReport:
+    """Bilan d'un appel à download_all."""
+
+    files: dict[int, Path] = field(default_factory=dict)
+    outcomes: dict[int, DownloadOutcome] = field(default_factory=dict)
+
+    @property
+    def missing(self) -> list[int]:
+        return [y for y, o in self.outcomes.items() if o is not DownloadOutcome.OK]
+
+    @property
+    def source_unavailable(self) -> bool:
+        """True si des fichiers manquent ET que tous les échecs sont externes.
+
+        C'est le cas qui ne doit PAS faire échouer le workflow : il n'y a
+        rien à corriger dans le dépôt.
+        """
+        failures = [o for o in self.outcomes.values() if o is not DownloadOutcome.OK]
+        return bool(failures) and all(
+            o is DownloadOutcome.SOURCE_UNAVAILABLE for o in failures
+        )
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Fonctions utilitaires
@@ -96,7 +149,9 @@ def _download_from_gdrive(file_id: str, destination: Path) -> bool:
         destination: Le chemin local de destination
 
     Returns:
-        True si le téléchargement a réussi, False sinon
+        DownloadOutcome.OK si le fichier est valide,
+        SOURCE_UNAVAILABLE si Google bloque temporairement (quota),
+        INVALID_CONTENT dans tous les autres cas de contenu inexploitable.
     """
     session = requests.Session()
 
@@ -133,18 +188,21 @@ def _download_from_gdrive(file_id: str, destination: Path) -> bool:
         if "quota" in preview.lower():
             logger.error(
                 "Google Drive a répondu « Quota exceeded » : le fichier est "
-                "temporairement indisponible parce que trop d'utilisateurs "
-                "l'ont téléchargé récemment. Ce n'est PAS un problème de "
-                "schéma ni d'ID expiré — il n'y a rien à corriger dans le "
-                "code, il faut réessayer plus tard."
+                "temporairement indisponible parce que le compte qui l'héberge "
+                "a dépassé son quota de partage. Vérifié le 2026-09-03 : le "
+                "blocage touche TOUS les fichiers d'Oracle's Elixir, y compris "
+                "ceux de 2016 que personne ne télécharge. Ce n'est donc ni un "
+                "problème de schéma, ni un ID expiré, et il n'y a rien à "
+                "corriger dans ce dépôt."
             )
-        else:
-            logger.error(
-                "Google Drive a renvoyé une page HTML au lieu du CSV. "
-                "L'ID est peut-être expiré ou le partage a changé "
-                "(voir GOOGLE_DRIVE_IDS dans src/config.py)."
-            )
-        return False
+            return DownloadOutcome.SOURCE_UNAVAILABLE
+
+        logger.error(
+            "Google Drive a renvoyé une page HTML au lieu du CSV, sans "
+            "mentionner de quota. L'ID est probablement expiré ou le partage "
+            "a changé (voir GOOGLE_DRIVE_IDS dans src/config.py)."
+        )
+        return DownloadOutcome.INVALID_CONTENT
 
     # Écriture en streaming : on lit le fichier par chunks de 32 Ko
     # au lieu de tout charger en mémoire (les CSV font ~150+ Mo)
@@ -171,7 +229,7 @@ def _download_from_gdrive(file_id: str, destination: Path) -> bool:
             f"Contenu reçu : {head[:200]!r}"
         )
         destination.unlink()
-        return False
+        return DownloadOutcome.INVALID_CONTENT
 
     # ── Garde-fou n°3 : l'en-tête CSV ────────────────────────────────────
     # Un fichier de la bonne taille peut quand même ne pas être le bon CSV.
@@ -185,11 +243,11 @@ def _download_from_gdrive(file_id: str, destination: Path) -> bool:
             f"En-tête reçu : {header[:200]!r}"
         )
         destination.unlink()
-        return False
+        return DownloadOutcome.INVALID_CONTENT
 
     size_mb = file_size / (1024 * 1024)
     logger.success(f"Téléchargé : {destination.name} ({size_mb:.1f} Mo)")
-    return True
+    return DownloadOutcome.OK
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -197,7 +255,9 @@ def _download_from_gdrive(file_id: str, destination: Path) -> bool:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-def download_csv(year: int, force: bool = False) -> Path | None:
+def download_csv(
+    year: int, force: bool = False
+) -> tuple[Path | None, DownloadOutcome]:
     """
     Télécharge le CSV Oracle's Elixir pour une année donnée.
 
@@ -209,7 +269,9 @@ def download_csv(year: int, force: bool = False) -> Path | None:
         force: Si True, re-télécharge même si le fichier existe
 
     Returns:
-        Le chemin vers le fichier CSV, ou None en cas d'échec
+        Un couple (chemin du CSV ou None, issue du téléchargement).
+        L'issue permet à l'appelant de distinguer une panne externe
+        (quota Drive) d'un vrai problème de contenu.
 
     Raises:
         ValueError: Si l'année n'est pas dans GOOGLE_DRIVE_IDS
@@ -237,7 +299,7 @@ def download_csv(year: int, force: bool = False) -> Path | None:
                 f"Cache hit : {filename} ({size_mb:.1f} Mo) — "
                 f"téléchargement ignoré. Utilisez force=True pour re-télécharger."
             )
-            return filepath
+            return filepath, DownloadOutcome.OK
         else:
             logger.warning(
                 f"Fichier {filename} trouvé mais trop petit ({file_size} octets). "
@@ -248,15 +310,23 @@ def download_csv(year: int, force: bool = False) -> Path | None:
     file_id = GOOGLE_DRIVE_IDS[year]
     logger.info(f"📥 Téléchargement de {filename} depuis Google Drive...")
 
+    # Dernière issue observée : sert à répondre « source indisponible » plutôt
+    # que « contenu invalide » quand les trois tentatives ont buté sur le quota.
+    last_outcome = DownloadOutcome.INVALID_CONTENT
+
     for attempt in range(1, MAX_RETRIES + 1):
         try:
-            success = _download_from_gdrive(file_id, filepath)
-            if success:
-                return filepath
+            last_outcome = _download_from_gdrive(file_id, filepath)
+            if last_outcome is DownloadOutcome.OK:
+                return filepath, DownloadOutcome.OK
             else:
                 logger.warning(
                     f"Tentative {attempt}/{MAX_RETRIES} échouée pour {filename}"
                 )
+                # Inutile d'insister sur un quota : il ne se libère pas en
+                # quelques secondes, et les trois tentatives sont du bruit.
+                if last_outcome is DownloadOutcome.SOURCE_UNAVAILABLE:
+                    break
         except requests.exceptions.Timeout:
             logger.warning(
                 f"Tentative {attempt}/{MAX_RETRIES} — Timeout (le serveur met trop "
@@ -277,17 +347,24 @@ def download_csv(year: int, force: bool = False) -> Path | None:
             logger.info(f"⏳ Nouvelle tentative dans {wait_time} secondes...")
             time.sleep(wait_time)
 
-    logger.error(
-        f"❌ Échec du téléchargement de {filename} après {MAX_RETRIES} tentatives. "
-        f"Vérifiez votre connexion et les IDs Google Drive dans config.py."
-    )
-    return None
+    if last_outcome is DownloadOutcome.SOURCE_UNAVAILABLE:
+        logger.error(
+            f"⏸️  {filename} indisponible à la source (quota Google Drive). "
+            f"Rien à corriger dans le dépôt, la prochaine exécution retentera."
+        )
+    else:
+        logger.error(
+            f"❌ Échec du téléchargement de {filename} après {MAX_RETRIES} "
+            f"tentatives. Vérifiez votre connexion et les IDs Google Drive "
+            f"dans config.py."
+        )
+    return None, last_outcome
 
 
 def download_all(
     years: list[int] | None = None,
     force: bool = False,
-) -> dict[int, Path]:
+) -> DownloadReport:
     """
     Télécharge les CSV pour toutes les années configurées.
 
@@ -296,12 +373,14 @@ def download_all(
         force: Si True, force le re-téléchargement de tous les fichiers
 
     Returns:
-        Dictionnaire {année: chemin_fichier} pour les téléchargements réussis
+        Un DownloadReport : les fichiers récupérés, l'issue par année, et
+        la propriété `source_unavailable` qui dit si l'échec est entièrement
+        imputable à la source plutôt qu'au dépôt.
     """
     if years is None:
         years = DATA_YEARS
 
-    results = {}
+    report = DownloadReport()
     logger.info(f"{'='*60}")
     logger.info("📥 ORACLE'S ELIXIR — Téléchargement des données")
     logger.info(f"   Années : {years}")
@@ -309,24 +388,31 @@ def download_all(
     logger.info(f"{'='*60}")
 
     for year in years:
-        filepath = download_csv(year, force=force)
+        filepath, outcome = download_csv(year, force=force)
+        report.outcomes[year] = outcome
         if filepath is not None:
-            results[year] = filepath
+            report.files[year] = filepath
 
     # Résumé
-    success = len(results)
+    success = len(report.files)
     total = len(years)
     logger.info(f"{'='*60}")
     if success == total:
         logger.success(f"✅ Téléchargement terminé : {success}/{total} fichiers OK")
+    elif report.source_unavailable:
+        logger.warning(
+            f"⏸️  Source indisponible : {success}/{total} fichiers récupérés. "
+            f"Google Drive bloque le partage d'Oracle's Elixir (quota). "
+            f"Années manquantes : {report.missing}"
+        )
     else:
         logger.warning(
             f"⚠️  Téléchargement partiel : {success}/{total} fichiers récupérés. "
-            f"Années manquantes : {[y for y in years if y not in results]}"
+            f"Années manquantes : {report.missing}"
         )
     logger.info(f"{'='*60}")
 
-    return results
+    return report
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -340,12 +426,27 @@ if __name__ == "__main__":
     # réapparaissait 3 étapes plus loin sous la forme d'une fausse
     # « dérive de schéma Oracle's Elixir », qui envoyait chercher le
     # problème au mauvais endroit.
-    _results = download_all()
-    if len(_results) < len(DATA_YEARS):
-        _missing = [y for y in DATA_YEARS if y not in _results]
+    #
+    # Deux codes de sortie distincts, parce que les deux situations n'appellent
+    # pas la même réaction côté CI :
+    #   75 (EX_TEMPFAIL) → la source est indisponible, le workflow s'arrête
+    #                      proprement sans alerter : il n'y a rien à corriger.
+    #    1               → le pipeline est réellement cassé, il faut alerter.
+    _report = download_all()
+
+    if _report.source_unavailable:
+        logger.warning(
+            f"Arrêt propre : les données ne sont pas récupérables pour "
+            f"l'instant (années {_report.missing}). La cause est extérieure "
+            f"au dépôt, aucune action n'est requise. Code de sortie "
+            f"{EXIT_SOURCE_UNAVAILABLE}."
+        )
+        sys.exit(EXIT_SOURCE_UNAVAILABLE)
+
+    if _report.missing:
         logger.error(
             f"Arrêt du pipeline : téléchargement incomplet, années "
-            f"manquantes {_missing}. Les étapes suivantes ne sont pas "
+            f"manquantes {_report.missing}. Les étapes suivantes ne sont pas "
             f"lancées car elles échoueraient avec un message trompeur."
         )
         sys.exit(1)

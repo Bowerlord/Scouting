@@ -20,7 +20,11 @@ from pathlib import Path
 import pytest
 
 from src.config import MIN_VALID_CSV_BYTES
-from src.data.downloader import _download_from_gdrive
+from src.data.downloader import (
+    DownloadOutcome,
+    DownloadReport,
+    _download_from_gdrive,
+)
 
 # ── Doublure de réponse HTTP ──────────────────────────────────────────────────
 
@@ -86,13 +90,32 @@ def _valid_csv() -> bytes:
 # ── Tests ─────────────────────────────────────────────────────────────────────
 
 
-def test_page_quota_google_rejetee_sans_ecriture(tmp_path: Path, patch_session):
-    """Le cas qui cassait le refresh : HTML de quota, pas de CSV."""
+def test_page_quota_google_classee_source_indisponible(tmp_path: Path, patch_session):
+    """Le cas qui cassait le refresh : HTML de quota, pas de CSV.
+
+    L'issue doit être SOURCE_UNAVAILABLE et non INVALID_CONTENT : c'est ce
+    qui permet au workflow de s'arrêter sans alerter, puisqu'il n'y a rien
+    à corriger dans le dépôt.
+    """
     patch_session(FakeResponse(QUOTA_PAGE, content_type="text/html; charset=utf-8"))
     destination = tmp_path / "2024_LoL_esports_match_data_from_OraclesElixir.csv"
 
-    assert _download_from_gdrive("fake_id", destination) is False
+    assert (
+        _download_from_gdrive("fake_id", destination)
+        is DownloadOutcome.SOURCE_UNAVAILABLE
+    )
     assert not destination.exists(), "aucun fichier ne doit être écrit"
+
+
+def test_page_html_sans_quota_classee_contenu_invalide(tmp_path: Path, patch_session):
+    """Une page HTML qui ne parle pas de quota = ID mort, donc action requise."""
+    page = b"<!DOCTYPE html><html><head><title>Page not found</title></head></html>"
+    patch_session(FakeResponse(page, content_type="text/html; charset=utf-8"))
+    destination = tmp_path / "introuvable.csv"
+
+    assert (
+        _download_from_gdrive("fake_id", destination) is DownloadOutcome.INVALID_CONTENT
+    )
 
 
 def test_fichier_trop_petit_rejete_et_supprime(tmp_path: Path, patch_session):
@@ -100,7 +123,9 @@ def test_fichier_trop_petit_rejete_et_supprime(tmp_path: Path, patch_session):
     patch_session(FakeResponse(VALID_HEADER + b"ESPORTSTMNT01_1,complete,LFL,x,mid,3\n"))
     destination = tmp_path / "tronque.csv"
 
-    assert _download_from_gdrive("fake_id", destination) is False
+    assert (
+        _download_from_gdrive("fake_id", destination) is DownloadOutcome.INVALID_CONTENT
+    )
     assert not destination.exists()
 
 
@@ -110,7 +135,9 @@ def test_entete_non_oracle_rejetee(tmp_path: Path, patch_session):
     patch_session(FakeResponse(contenu))
     destination = tmp_path / "mauvais_schema.csv"
 
-    assert _download_from_gdrive("fake_id", destination) is False
+    assert (
+        _download_from_gdrive("fake_id", destination) is DownloadOutcome.INVALID_CONTENT
+    )
     assert not destination.exists()
 
 
@@ -119,6 +146,38 @@ def test_csv_valide_accepte(tmp_path: Path, patch_session):
     patch_session(FakeResponse(_valid_csv()))
     destination = tmp_path / "2024_LoL_esports_match_data_from_OraclesElixir.csv"
 
-    assert _download_from_gdrive("fake_id", destination) is True
+    assert _download_from_gdrive("fake_id", destination) is DownloadOutcome.OK
     assert destination.exists()
     assert destination.stat().st_size > MIN_VALID_CSV_BYTES
+
+
+# ── Arbitrage panne externe / pipeline cassé ──────────────────────────────────
+
+
+def test_rapport_quota_seul_est_une_panne_externe():
+    """Trois quotas : le workflow doit s'arrêter proprement, sans alerter."""
+    rapport = DownloadReport(
+        outcomes=dict.fromkeys([2024, 2025, 2026], DownloadOutcome.SOURCE_UNAVAILABLE)
+    )
+    assert rapport.source_unavailable is True
+    assert rapport.missing == [2024, 2025, 2026]
+
+
+def test_rapport_un_seul_contenu_invalide_suffit_a_alerter():
+    """Un ID mort au milieu de deux quotas reste un vrai problème."""
+    rapport = DownloadReport(
+        outcomes={
+            2024: DownloadOutcome.SOURCE_UNAVAILABLE,
+            2025: DownloadOutcome.INVALID_CONTENT,
+            2026: DownloadOutcome.SOURCE_UNAVAILABLE,
+        }
+    )
+    assert rapport.source_unavailable is False
+
+
+def test_rapport_tout_ok_nest_pas_une_panne():
+    rapport = DownloadReport(
+        outcomes=dict.fromkeys([2024, 2025, 2026], DownloadOutcome.OK)
+    )
+    assert rapport.source_unavailable is False
+    assert rapport.missing == []

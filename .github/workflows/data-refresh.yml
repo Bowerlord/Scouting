@@ -16,14 +16,23 @@ name: Data Refresh
 # - create-pull-request est un no-op s'il n'y a aucun diff ; generated_at
 #   (date seule) change à chaque run, donc une PR s'ouvre chaque semaine et
 #   porte au minimum la mise à jour de fraîcheur.
-# - En cas d'échec, une issue est ouverte avec le lien vers le run. Causes
-#   probables : ID Google Drive expiré (src/config.py, GOOGLE_DRIVE_IDS) ou
-#   dérive de schéma Oracle's Elixir (désormais détectée par
-#   src/data/schema.py qui fait échouer le pipeline bruyamment).
+# - Deux issues distinctes sont possibles, et elles ne se traitent pas pareil :
+#     * source indisponible (quota Google Drive du compte Oracle's Elixir) :
+#       le téléchargement sort en code 75, le run se termine EN VERT avec une
+#       note dans le résumé, et personne n'est alerté. Constaté le 2026-09-03 :
+#       le quota bloque tous leurs fichiers, y compris ceux de 2016, donc
+#       aucune correction dans ce dépôt ne peut y changer quoi que ce soit.
+#     * pipeline réellement cassé (ID mort, fichier corrompu, dérive de schéma) :
+#       code de sortie 1, run rouge, et commentaire sur l'issue de suivi.
 
 on:
   schedule:
-    - cron: "0 6 * * 1" # lundi 06:00 UTC, hebdomadaire
+    # Lundi et jeudi. Deux passages plutôt qu'un : le quota Google Drive de
+    # la source se libère de façon imprévisible, donc deux fenêtres valent
+    # mieux qu'une. Un passage qui ne trouve pas la source se termine en
+    # vert sans rien signaler (voir l'étape « Téléchargement des données »).
+    - cron: "0 6 * * 1"
+    - cron: "0 6 * * 4"
   workflow_dispatch:
 
 permissions:
@@ -52,15 +61,39 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Pipeline complet
+      - name: Téléchargement des données
+        id: download
         run: |
+          set +e
           python -m src.data.downloader
+          code=$?
+          set -e
+          if [ "$code" -eq 75 ]; then
+            # 75 = EX_TEMPFAIL : la source est indisponible (quota Google
+            # Drive côté Oracle's Elixir). Ce n'est pas un échec du dépôt,
+            # donc le run se termine en vert et on ne réveille personne.
+            echo "source_unavailable=true" >> "$GITHUB_OUTPUT"
+            {
+              echo "### ⏸️ Refresh ignoré : source indisponible"
+              echo ""
+              echo "Google Drive bloque le partage des fichiers Oracle's Elixir (quota du compte hébergeur)."
+              echo "Le blocage touche tous leurs fichiers, y compris les plus anciens : il n'y a rien à corriger ici."
+              echo "Les snapshots publiés restent ceux du dernier refresh réussi. Nouvelle tentative au prochain passage."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          exit "$code"
+
+      - name: Pipeline complet
+        if: steps.download.outputs.source_unavailable != 'true'
+        run: |
           python -m src.data.cleaner
           python -m src.data.feature_engineering
           python -m src.models.talent_scorer
           python -m src.models.clusterer
 
       - name: Ouvrir une PR avec les snapshots régénérés
+        if: steps.download.outputs.source_unavailable != 'true'
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.DATA_REFRESH_TOKEN || secrets.GITHUB_TOKEN }}
