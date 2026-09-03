@@ -79,16 +79,31 @@ jobs:
               (PR-AUC cohérent avec les runs précédents),
             - la date `data_max_date` dans `reports/metrics/refresh_metadata.json`.
 
-      - name: Ouvrir une issue en cas d'échec
+      - name: Signaler l'échec (une seule issue de suivi, mise à jour)
         if: failure()
         env:
           GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          REPO: ${{ github.repository }}
         run: |
-          gh issue create \
-            --repo "${{ github.repository }}" \
-            --title "Échec du data refresh du $(date +%F)" \
-            --body "Le workflow Data Refresh a échoué : ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          # Une seule issue de suivi, ré-utilisée à chaque échec.
+          # Avant : une issue neuve chaque semaine pour la même cause,
+          # donc un mail hebdomadaire et 8 issues ouvertes en un mois.
+          TITLE="Data Refresh en échec (issue de suivi)"
+          BODY="Échec du run du $(date +%F) : $RUN_URL
 
-          Causes probables :
-          - ID Google Drive expiré ou modifié (src/config.py, GOOGLE_DRIVE_IDS)
-          - dérive de schéma Oracle's Elixir (voir src/data/schema.py — le message d'erreur du run liste les colonnes en cause)"
+          Causes possibles, par fréquence réelle observée :
+          1. **Quota Google Drive dépassé** — Google renvoie une page HTML \`Quota exceeded\` au lieu du CSV, parce que le fichier public d'Oracle's Elixir a été trop téléchargé. C'est temporaire et extérieur au dépôt : rien à corriger, le run suivant peut passer.
+          2. ID Google Drive expiré ou partage modifié (\`GOOGLE_DRIVE_IDS\` dans \`src/config.py\`).
+          3. Dérive réelle du schéma Oracle's Elixir (\`src/data/schema.py\`).
+
+          Le log du run dit lequel des trois s'applique : le téléchargement s'arrête maintenant avec la cause exacte, au lieu de laisser le pipeline échouer trois étapes plus loin sur une fausse dérive de schéma."
+
+          EXISTING=$(gh issue list --repo "$REPO" --state open \
+            --search "$TITLE in:title" --json number --jq '.[0].number // empty')
+
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --repo "$REPO" --body "$BODY"
+          else
+            gh issue create --repo "$REPO" --title "$TITLE" --body "$BODY"
+          fi

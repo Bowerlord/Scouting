@@ -32,6 +32,7 @@ Pourquoi un cache local ?
   localement et sa taille pour s'assurer qu'il n'est pas corrompu.
 """
 
+import sys
 import time
 from pathlib import Path
 
@@ -42,6 +43,7 @@ from src.config import (
     GDRIVE_DOWNLOAD_URL,
     GOOGLE_DRIVE_IDS,
     MAX_RETRIES,
+    MIN_VALID_CSV_BYTES,
     RAW_DATA_DIR,
     RETRY_DELAY,
 )
@@ -121,6 +123,29 @@ def _download_from_gdrive(file_id: str, destination: Path) -> bool:
 
     response.raise_for_status()
 
+    # ── Garde-fou n°1 : le Content-Type ──────────────────────────────────
+    # Google répond en text/html quand il sert une page d'erreur (quota
+    # dépassé, fichier retiré, permissions changées) plutôt que le fichier.
+    # C'est le signal le plus fiable, et il arrive AVANT toute écriture.
+    content_type = response.headers.get("Content-Type", "")
+    if "text/html" in content_type.lower():
+        preview = response.text[:2000]
+        if "quota" in preview.lower():
+            logger.error(
+                "Google Drive a répondu « Quota exceeded » : le fichier est "
+                "temporairement indisponible parce que trop d'utilisateurs "
+                "l'ont téléchargé récemment. Ce n'est PAS un problème de "
+                "schéma ni d'ID expiré — il n'y a rien à corriger dans le "
+                "code, il faut réessayer plus tard."
+            )
+        else:
+            logger.error(
+                "Google Drive a renvoyé une page HTML au lieu du CSV. "
+                "L'ID est peut-être expiré ou le partage a changé "
+                "(voir GOOGLE_DRIVE_IDS dans src/config.py)."
+            )
+        return False
+
     # Écriture en streaming : on lit le fichier par chunks de 32 Ko
     # au lieu de tout charger en mémoire (les CSV font ~150+ Mo)
     downloaded = 0
@@ -131,19 +156,36 @@ def _download_from_gdrive(file_id: str, destination: Path) -> bool:
                 f.write(chunk)
                 downloaded += len(chunk)
 
-    # Vérification de sécurité : si le fichier fait moins de 1 Ko,
-    # c'est probablement une page d'erreur HTML et non un CSV
+    # ── Garde-fou n°2 : la taille ────────────────────────────────────────
+    # Les CSV Oracle's Elixir font 24 à 77 Mo. Le seuil précédent était de
+    # 1 Ko, ce qui laissait passer les pages d'erreur de Google (2 Ko) :
+    # le fichier était alors annoncé « téléchargé (0.0 Mo) », et l'échec
+    # ne se manifestait que 3 étapes plus loin, sous la forme trompeuse
+    # d'une dérive de schéma. Le seuil est aligné sur celui du cache.
     file_size = destination.stat().st_size
-    if file_size < 1000:
-        with open(destination, "r", encoding="utf-8", errors="ignore") as f:
-            content = f.read(500)
-            if "<html" in content.lower():
-                logger.error(
-                    "Le fichier téléchargé est une page HTML d'erreur, "
-                    "pas un CSV. Le lien Google Drive est peut-être expiré."
-                )
-                destination.unlink()
-                return False
+    if file_size < MIN_VALID_CSV_BYTES:
+        head = destination.read_text(encoding="utf-8", errors="ignore")[:500]
+        logger.error(
+            f"Fichier rejeté : {destination.name} ne fait que {file_size} "
+            f"octets (minimum attendu : {MIN_VALID_CSV_BYTES}). "
+            f"Contenu reçu : {head[:200]!r}"
+        )
+        destination.unlink()
+        return False
+
+    # ── Garde-fou n°3 : l'en-tête CSV ────────────────────────────────────
+    # Un fichier de la bonne taille peut quand même ne pas être le bon CSV.
+    # La colonne `gameid` est présente dans tous les exports Oracle's Elixir.
+    with open(destination, "r", encoding="utf-8", errors="ignore") as f:
+        header = f.readline()
+    if "gameid" not in header.lower():
+        logger.error(
+            f"Fichier rejeté : l'en-tête de {destination.name} ne ressemble "
+            f"pas à un export Oracle's Elixir (colonne `gameid` absente). "
+            f"En-tête reçu : {header[:200]!r}"
+        )
+        destination.unlink()
+        return False
 
     size_mb = file_size / (1024 * 1024)
     logger.success(f"Téléchargé : {destination.name} ({size_mb:.1f} Mo)")
@@ -189,7 +231,7 @@ def download_csv(year: int, force: bool = False) -> Path | None:
     # (un fichier de moins de 1 Mo est probablement corrompu)
     if filepath.exists() and not force:
         file_size = filepath.stat().st_size
-        if file_size > 1_000_000:  # > 1 Mo = probablement valide
+        if file_size > MIN_VALID_CSV_BYTES:  # > 1 Mo = probablement valide
             size_mb = file_size / (1024 * 1024)
             logger.info(
                 f"Cache hit : {filename} ({size_mb:.1f} Mo) — "
@@ -292,4 +334,18 @@ def download_all(
 # ═══════════════════════════════════════════════════════════════════════════════
 
 if __name__ == "__main__":
-    download_all()
+    # Sortie en code 1 si un seul fichier manque, pour que le pipeline
+    # (Makefile, CI, workflow Data Refresh) s'arrête ICI plutôt que de
+    # continuer sur des fichiers absents ou tronqués. Sans ça, l'échec
+    # réapparaissait 3 étapes plus loin sous la forme d'une fausse
+    # « dérive de schéma Oracle's Elixir », qui envoyait chercher le
+    # problème au mauvais endroit.
+    _results = download_all()
+    if len(_results) < len(DATA_YEARS):
+        _missing = [y for y in DATA_YEARS if y not in _results]
+        logger.error(
+            f"Arrêt du pipeline : téléchargement incomplet, années "
+            f"manquantes {_missing}. Les étapes suivantes ne sont pas "
+            f"lancées car elles échoueraient avec un message trompeur."
+        )
+        sys.exit(1)

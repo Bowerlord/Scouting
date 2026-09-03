@@ -56,6 +56,13 @@ GOOGLE_DRIVE_IDS = {
     2026: "1hnpbrUpBMS1TZI7IovfpKeZfWJH1Aptm",  # Partiel — Spring Split 2026
 }
 
+# Taille minimale d'un CSV Oracle's Elixir considéré comme valide.
+# Les exports réels font 24 à 77 Mo. En dessous de 1 Mo, le fichier est
+# forcément une page d'erreur de Google Drive (quota dépassé, partage
+# modifié) ou un téléchargement tronqué. Sert au garde-fou du téléchargement
+# comme à la validation du cache local, pour que les deux aient le même seuil.
+MIN_VALID_CSV_BYTES = 1_000_000
+
 # ══════════════════════════════════════════════════════════════════════════════
 # Ligues ciblées
 # ══════════════════════════════════════════════════════════════════════════════
