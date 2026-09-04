@@ -312,6 +312,40 @@ Deux images distinctes, et c'est délibéré : l'API et le dashboard n'ont ni le
 
 L'image de l'API est construite en deux étages, tourne sous un utilisateur non privilégié, et porte un `HEALTHCHECK` qui interroge la vraie route de santé.
 
+### Le serveur MCP
+
+```bash
+make mcp          # transport stdio, pour Claude Code ou Claude Desktop
+```
+
+Le [Model Context Protocol](https://modelcontextprotocol.io) permet à un agent d'interroger ces données en langage naturel, sans écrire de SQL ni connaître le schéma. Le serveur expose **7 outils** et **2 ressources** :
+
+| Outil | Ce qu'il fait |
+|-------|---------------|
+| `search_players` | Recherche filtrée par ligue, poste, saison, matchs minimum |
+| `get_player` | Fiche complète, toutes saisons |
+| `find_similar_players` | Joueurs au profil de jeu le plus proche |
+| `get_leaderboard` | Classement, échantillon fiable par défaut |
+| `get_archetypes` | Archétypes **et leur taux de promotion en LEC** |
+| `list_filters` | Valeurs réellement présentes dans les données |
+| `get_status` | Fraîcheur des données et source utilisée |
+
+**Ce qui distingue ce serveur d'un simple emballage d'API : les descriptions.** Un agent qui reçoit `talent_score` sans explication compare des scores bruts et se trompe, parce que la distribution est très asymétrique. Les instructions du serveur annoncent donc les deux pièges d'interprétation dès la connexion : comparer par percentile et non par écart brut, et ne jamais présenter comme un talent un joueur sous 10 matchs.
+
+La ressource `scouting://data-dictionary` va plus loin : **elle est extraite des fichiers de propriétés dbt**, qui restent la source de vérité. Une description modifiée dans dbt se propage au serveur MCP sans intervention, et il n'existe pas deux versions de la même explication qui divergent avec le temps. Les contraintes des tests dbt y sont incluses, si bien que l'agent connaît les valeurs admises avant d'interroger.
+
+Le serveur appelle l'API REST quand elle est joignable et **retombe sur la lecture directe des résultats sinon** : il reste utilisable tant que le déploiement n'est pas fait. Le mode retenu est décidé au démarrage et annoncé dans les logs, pour qu'un basculement ne passe jamais inaperçu.
+
+#### Installation dans Claude Code
+
+Le dépôt contient un `.mcp.json` prêt à l'emploi. Exemple d'échange réel :
+
+> **« Quels archétypes de jungle montent le plus souvent en LEC ? »**
+>
+> `High DPS | Farmer dominant | Lane bully | Early dominant` — 145 joueurs, **11,7 %** de promotion
+> `Profil neutre` — 169 joueurs, 3,0 %
+> `Profil neutre` — 110 joueurs, 2,7 %
+
 ### Ce que la CI vérifie
 
 | Job | Contrôle |
@@ -319,6 +353,8 @@ L'image de l'API est construite en deux étages, tourne sous un utilisateur non 
 | `test` | ruff sur `src/`, `tests/`, `api/` puis pytest avec **couverture bloquante à 70 %** |
 | `dbt` | `dbt build` : les 6 modèles et leurs 25 tests de qualité |
 | `docker` | Construit l'image, **la démarre réellement**, interroge `/health` et une route métier |
+
+Le lint et les tests couvrent `src/`, `api/` et `mcp_server/`.
 
 Le job Docker ne se contente pas de construire l'image : un build qui réussit ne prouve pas que le conteneur démarre.
 
@@ -353,6 +389,7 @@ Les données proviennent de deux sources principales :
 | **Réduction dim.** | UMAP, PCA |
 | **Transformation & qualité** | dbt, DuckDB, SQL |
 | **API** | FastAPI, Uvicorn, Pydantic |
+| **Accès agent** | Model Context Protocol (SDK Python) |
 | **Conteneurs** | Docker, Docker Compose |
 | **Qualité de code** | pytest, pytest-cov, ruff |
 | **CI/CD** | GitHub Actions (lint, tests, dbt build, build et démarrage de l'image) |
@@ -386,6 +423,12 @@ kcorp-scouting/
 │   ├── serialization.py             # Conversion pandas vers JSON
 │   ├── observability.py             # Latences, volumes, erreurs par route
 │   └── routers/                     # players, reference, system
+│
+├── mcp_server/                      # Serveur MCP (accès agent aux données)
+│   ├── server.py                    # 7 outils, avec leurs règles de lecture
+│   ├── backend.py                   # API si joignable, fichiers locaux sinon
+│   ├── resources.py                 # Dictionnaire de données extrait de dbt
+│   └── __main__.py                  # Point d'entrée stdio
 │
 ├── dbt/                             # Transformation et qualité des données
 │   ├── dbt_project.yml
