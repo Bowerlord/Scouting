@@ -109,3 +109,13 @@ docker-up:  ## Lance l'API et le dashboard ensemble
 	docker compose up --build
 
 .PHONY: api api-test dbt-build dbt-docs docker-build docker-up
+
+# ── Serveur MCP ──────────────────────────────────────────────────────────────
+
+mcp:  ## Lance le serveur MCP en stdio (pour un client comme Claude Code)
+	python -m mcp_server
+
+mcp-test:  ## Lance uniquement les tests du serveur MCP
+	pytest tests/test_mcp_server.py -v
+
+.PHONY: mcp mcp-test

@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "scouting-lol": {
+      "command": "python",
+      "args": ["-m", "mcp_server"],
+      "env": {
+        "SCOUTING_API_URL": "http://localhost:8000"
+      }
+    }
+  }
+}

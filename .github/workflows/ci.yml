@@ -40,15 +40,17 @@ jobs:
           pip install pandas numpy scikit-learn joblib loguru requests pytest pytest-cov ruff
           # Dépendances de l'API : la suite couvre maintenant api/ en plus de src/.
           pip install -r requirements-api.txt httpx
+          # Serveur MCP : SDK et lecture des propriétés dbt.
+          pip install mcp pyyaml
 
       - name: Lint (ruff)
-        run: ruff check src/ tests/ api/
+        run: ruff check src/ tests/ api/ mcp_server/
 
       - name: Tests (pytest + couverture)
         # Seuil = couverture mesurée (73%) − 3 pts. Relevé de 60 à 70 le 05/09
         # quand l'API, couverte à plus de 85%, a fait monter la mesure globale.
         # Périmètre de mesure défini dans pyproject.toml ([tool.coverage.run]).
-        run: pytest tests/ -v --cov=src --cov=api --cov-report=term-missing --cov-fail-under=70
+        run: pytest tests/ -v --cov=src --cov=api --cov=mcp_server --cov-report=term-missing --cov-fail-under=70
 
   dbt:
     name: dbt build (modèles + tests de qualité)
