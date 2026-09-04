@@ -1,0 +1,102 @@
+version: 2
+
+models:
+  - name: fct_player_season
+    description: >
+      Table de faits centrale : une ligne par joueur, saison, split et équipe.
+      Le grain inclut l'équipe parce qu'un joueur peut changer d'équipe en
+      cours de split.
+    tests:
+      - dbt_utils_unique_combination:
+          # Test générique défini dans macros/ : dbt-utils n'est pas installé
+          # pour ne pas ajouter une dépendance de paquets à un projet qui n'en
+          # a besoin que pour ce seul contrôle.
+          arguments:
+            combination_of_columns:
+              - player_id
+              - league
+              - season
+              - split
+              - position
+              - team_name
+    columns:
+      - name: player_id
+        description: Pseudonyme normalisé en minuscules, identifiant stable du joueur.
+        tests:
+          - not_null
+      - name: league
+        tests:
+          - not_null
+          - accepted_values:
+              # Les six ligues régionales européennes suivies par le pipeline.
+              # Si une septième apparaît, le build échoue et force à décider
+              # si c'est une vraie nouveauté ou une faute de frappe en amont.
+              arguments:
+                values: ["LFL", "LFL2", "LVP SL", "NLC", "PRM", "TCL"]
+      - name: season
+        tests:
+          - not_null
+      - name: position
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["top", "jng", "mid", "bot", "sup"]
+      - name: talent_score
+        description: Score du modèle. Asymétrique, à comparer via le percentile.
+        tests:
+          - not_null
+      - name: score_percentile
+        tests:
+          - not_null
+      - name: games_played
+        tests:
+          - not_null
+      - name: has_reliable_sample
+        description: Vrai à partir de 10 matchs joués. Seuil défini une seule fois, ici.
+        tests:
+          - not_null
+
+  - name: dim_player
+    description: Une ligne par joueur, agrégée sur toutes ses saisons.
+    columns:
+      - name: player_id
+        tests:
+          - unique
+          - not_null
+      - name: season_count
+        tests:
+          - not_null
+      - name: current_position
+        tests:
+          - accepted_values:
+              arguments:
+                values: ["top", "jng", "mid", "bot", "sup"]
+
+  - name: mart_leaderboard
+    description: Classement des joueurs à l'échantillon suffisant, avec rangs global, par poste et par ligue.
+    columns:
+      - name: overall_rank
+        tests:
+          - unique
+          - not_null
+      - name: player_id
+        tests:
+          - not_null
+      - name: games_played
+        description: Toujours au moins 10, par construction du modèle.
+        tests:
+          - not_null
+
+  - name: mart_archetype_performance
+    description: Taux de promotion en LEC par archétype de jeu.
+    columns:
+      - name: archetype
+        tests:
+          - not_null
+      - name: promotion_rate
+        tests:
+          - not_null
+      - name: player_season_count
+        tests:
+          - not_null

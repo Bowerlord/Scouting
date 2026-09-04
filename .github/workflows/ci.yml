@@ -38,11 +38,97 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install pandas numpy scikit-learn joblib loguru requests pytest pytest-cov ruff
+          # Dépendances de l'API : la suite couvre maintenant api/ en plus de src/.
+          pip install -r requirements-api.txt httpx
 
       - name: Lint (ruff)
-        run: ruff check src/ tests/
+        run: ruff check src/ tests/ api/
 
       - name: Tests (pytest + couverture)
-        # Seuil = couverture mesurée (65%) − 5 pts, à relever au fil des ajouts.
+        # Seuil = couverture mesurée (73%) − 3 pts. Relevé de 60 à 70 le 05/09
+        # quand l'API, couverte à plus de 85%, a fait monter la mesure globale.
         # Périmètre de mesure défini dans pyproject.toml ([tool.coverage.run]).
-        run: pytest tests/ -v --cov=src --cov-report=term-missing --cov-fail-under=60
+        run: pytest tests/ -v --cov=src --cov=api --cov-report=term-missing --cov-fail-under=70
+
+  dbt:
+    name: dbt build (modèles + tests de qualité)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout du dépôt
+        uses: actions/checkout@v4
+
+      - name: Installation de Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Installation de dbt
+        run: |
+          python -m pip install --upgrade pip
+          pip install dbt-duckdb
+
+      # `dbt build` enchaîne modèles et tests, et s'arrête au premier échec.
+      # Une colonne devenue nulle, un doublon apparu en amont ou une ligue
+      # inattendue font donc échouer la CI avant d'atteindre le dashboard.
+      - name: Construction et tests des modèles
+        working-directory: dbt
+        env:
+          DBT_PROFILES_DIR: .
+          DBT_METRICS_DIR: ../reports/metrics
+        run: dbt build --no-partial-parse
+
+      - name: Publication des artefacts dbt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dbt-artifacts
+          path: dbt/target/
+          retention-days: 7
+
+  docker:
+    name: Image Docker (build + démarrage réel)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout du dépôt
+        uses: actions/checkout@v4
+
+      - name: Construction de l'image de l'API
+        run: docker build -t scouting-api:ci .
+
+      # Un build qui réussit ne prouve pas que l'image démarre. On la lance
+      # vraiment et on interroge /health, la seule route qui vérifie que les
+      # données sont chargées.
+      - name: Démarrage du conteneur
+        run: docker run -d --name scouting-api -p 8000:8000 scouting-api:ci
+
+      - name: Attente de la disponibilité
+        run: |
+          for attempt in $(seq 1 30); do
+            if curl --silent --fail http://localhost:8000/health > /dev/null; then
+              echo "API disponible après ${attempt}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "L'API n'a pas répondu en 30 secondes"
+          docker logs scouting-api
+          exit 1
+
+      - name: Vérification du contenu servi
+        run: |
+          players=$(curl --silent --fail http://localhost:8000/health | python -c "import json,sys; print(json.load(sys.stdin)['players_loaded'])")
+          echo "Joueurs chargés : ${players}"
+          test "${players}" -gt 0
+
+          # Une route métier, pour vérifier que l'image sert autre chose que /health.
+          curl --silent --fail "http://localhost:8000/leaderboard?limit=1" | head -c 200
+          echo
+
+      - name: Logs du conteneur en cas d'échec
+        if: failure()
+        run: docker logs scouting-api
+
+      - name: Arrêt du conteneur
+        if: always()
+        run: docker rm -f scouting-api

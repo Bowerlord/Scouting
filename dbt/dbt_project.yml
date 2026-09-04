@@ -1,0 +1,36 @@
+# Projet dbt du Scouting Tool.
+#
+# Pourquoi dbt sur un projet qui a déjà un pipeline Python : le pipeline
+# produit des résultats, il ne les contrôle pas. dbt ajoute la couche qui
+# manquait, celle où chaque transformation est du SQL versionné, documenté,
+# et surtout testé à chaque exécution. Une colonne qui devient nulle ou un
+# doublon qui apparaît en amont fait échouer le build au lieu de se propager
+# jusqu'au dashboard.
+#
+# Le moteur est DuckDB : il lit directement les CSV du pipeline, ne demande
+# aucun serveur, et tourne à l'identique sur un poste et dans la CI.
+
+name: "scouting"
+version: "1.0.0"
+config-version: 2
+
+profile: "scouting"
+
+model-paths: ["models"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+models:
+  scouting:
+    staging:
+      # Les modèles de staging sont des vues : ils ne font que nettoyer et
+      # renommer, les matérialiser coûterait du disque pour rien.
+      +materialized: view
+      +schema: staging
+    marts:
+      # Les marts sont des tables : elles sont lues plusieurs fois par
+      # l'API et le dashboard, et la lecture doit être immédiate.
+      +materialized: table
+      +schema: marts

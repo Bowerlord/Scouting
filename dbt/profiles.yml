@@ -1,0 +1,15 @@
+# Profil dbt, versionné à dessein : il ne contient aucun secret.
+#
+# DuckDB écrit un simple fichier local. Le chemin des CSV sources est passé
+# en variable d'environnement pour que le même profil serve sur un poste,
+# dans la CI et dans un conteneur.
+
+scouting:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "{{ env_var('DBT_DUCKDB_PATH', 'target/scouting.duckdb') }}"
+      threads: 4
+      extensions:
+        - httpfs

@@ -68,3 +68,13 @@ logs/
 # --- Couverture de tests ---
 .coverage
 htmlcov/
+
+# ── dbt ──────────────────────────────────────────────────────────────────────
+# target/ contient le SQL compilé, les artefacts de run et la base DuckDB :
+# tout est régénérable par `dbt build`, rien n'a à être versionné.
+dbt/target/
+dbt/dbt_packages/
+dbt/logs/
+*.duckdb
+*.duckdb.wal
+dbt/.user.yml

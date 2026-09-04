@@ -1,0 +1,12 @@
+# Dépendances de l'API REST uniquement.
+#
+# Séparées de requirements.txt à dessein : l'image de l'API ne doit embarquer
+# ni scikit-learn, ni xgboost, ni umap-learn, ni streamlit. L'API lit des
+# résultats déjà calculés, elle n'entraîne rien. Cette séparation fait passer
+# l'image de plus d'un gigaoctet à quelques centaines de mégaoctets, et réduit
+# d'autant la surface de vulnérabilités à surveiller.
+
+fastapi>=0.110
+uvicorn[standard]>=0.27
+pandas>=2.0
+numpy>=1.24

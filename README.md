@@ -247,6 +247,81 @@ On réexécute K-Means séparément pour chacune des 5 positions (top, jng, mid,
 
 ✅ **Résultat** : Un pipeline End-to-End prêt pour le scouting, entièrement documenté et testé. Le projet démontre comment des concepts complexes (curse of dimensionality, class imbalance, time leakage) ont été gérés en conditions réelles.
 
+---
+
+## 🏭 Phase 8 — Industrialisation (API, dbt, conteneurs)
+
+> Les sept premières phases produisent des résultats. Cette phase les rend
+> exploitables par autre chose qu'un notebook : une API que n'importe quel
+> client peut interroger, une couche de transformation testée à chaque
+> exécution, et des images qui tournent à l'identique partout.
+
+### L'API REST
+
+```bash
+make api          # http://localhost:8000/docs
+```
+
+| Route | Ce qu'elle renvoie |
+|-------|--------------------|
+| `GET /health` | État du service et fraîcheur des données. **503 si les données ne sont pas chargées** |
+| `GET /metrics` | Volume, taux d'erreur et latences p50/p95 par route |
+| `GET /players` | Recherche paginée : ligue, poste, split, saison, matchs minimum, tri |
+| `GET /players/{nom}` | Toutes les saisons connues du joueur |
+| `GET /players/{nom}/similar` | Joueurs au profil de jeu le plus proche, dans la même position |
+| `GET /leaderboard` | Classement, filtré par défaut sur 10 matchs minimum |
+| `GET /archetypes` | Archétypes de jeu et **leur taux de promotion en LEC** |
+| `GET /filters` | Valeurs de filtres réellement présentes dans les données |
+
+Trois décisions de conception valent d'être expliquées :
+
+- **Les similarités se mesurent sur les z-scores de performance, pas sur le score de talent.** Deux joueurs peuvent avoir le même score global en jouant de façons opposées, et c'est précisément ce qu'un recruteur veut distinguer.
+- **`/health` renvoie 503 quand les données manquent.** Un conteneur qui répond 200 sans données est pire qu'un conteneur mort : l'orchestrateur le laisse dans le pool et les erreurs arrivent chez l'utilisateur.
+- **Les métriques sont agrégées par motif de route** (`/players/{playername}`) et non par chemin concret. Sinon un simple parcours du catalogue crée une série par joueur et le registre grossit sans limite.
+
+### La couche dbt
+
+```bash
+make dbt-build    # 6 modèles, 25 tests de qualité
+```
+
+Le pipeline Python produit des résultats, il ne les contrôle pas. dbt ajoute la couche manquante : chaque transformation est du SQL versionné, documenté et testé à chaque exécution. **Une colonne devenue nulle, un doublon apparu en amont ou une ligue inattendue font échouer le build au lieu de se propager jusqu'au dashboard.**
+
+```
+staging/   stg_players, stg_clusters            (vues : nettoyage et renommage)
+marts/     fct_player_season                    (table de faits, grain joueur × saison × split × équipe)
+           dim_player                           (une ligne par joueur, agrégée)
+           mart_leaderboard                     (classement, rangs global / poste / ligue)
+           mart_archetype_performance           (taux de promotion en LEC par archétype)
+```
+
+Le moteur est **DuckDB** : il lit directement les CSV du pipeline, ne demande aucun serveur, et tourne à l'identique sur un poste et dans la CI.
+
+Deux exemples de ce que les tests attrapent, et pourquoi ils existent :
+
+- **L'unicité du grain inclut l'équipe.** Six joueurs ont changé d'équipe en cours de split en 2025 et ont donc deux lignes pour la même saison. Sans `team_name` dans la clé, la fusion échoue ; en le retirant, on ferait disparaître une demi-saison bien réelle.
+- **Le taux de victoire est testé entre 0 et 1.** Une valeur au-dessus de 1 trahirait un pourcentage mal converti en amont, l'erreur la plus courante et la plus silencieuse sur ce type de colonne.
+
+### Les conteneurs
+
+```bash
+make docker-up    # API sur :8000, dashboard sur :8501
+```
+
+Deux images distinctes, et c'est délibéré : l'API et le dashboard n'ont ni les mêmes dépendances, ni le même rythme de déploiement. Les empaqueter ensemble obligerait à redéployer l'API pour un changement de couleur dans un graphique. Aucune des deux n'embarque scikit-learn ni xgboost, puisqu'elles lisent des résultats déjà calculés.
+
+L'image de l'API est construite en deux étages, tourne sous un utilisateur non privilégié, et porte un `HEALTHCHECK` qui interroge la vraie route de santé.
+
+### Ce que la CI vérifie
+
+| Job | Contrôle |
+|-----|----------|
+| `test` | ruff sur `src/`, `tests/`, `api/` puis pytest avec **couverture bloquante à 70 %** |
+| `dbt` | `dbt build` : les 6 modèles et leurs 25 tests de qualité |
+| `docker` | Construit l'image, **la démarre réellement**, interroge `/health` et une route métier |
+
+Le job Docker ne se contente pas de construire l'image : un build qui réussit ne prouve pas que le conteneur démarre.
+
 ## 📊 Données
 
 Les données proviennent de deux sources principales :
@@ -276,8 +351,13 @@ Les données proviennent de deux sources principales :
 | **Data** | Python, Pandas, NumPy |
 | **ML classique** | Scikit-Learn, XGBoost |
 | **Réduction dim.** | UMAP, PCA |
-| **Visualisation** | Matplotlib, Seaborn, Plotly |
-| **Logging** | Loguru |
+| **Transformation & qualité** | dbt, DuckDB, SQL |
+| **API** | FastAPI, Uvicorn, Pydantic |
+| **Conteneurs** | Docker, Docker Compose |
+| **Qualité de code** | pytest, pytest-cov, ruff |
+| **CI/CD** | GitHub Actions (lint, tests, dbt build, build et démarrage de l'image) |
+| **Visualisation** | Streamlit, Matplotlib, Plotly |
+| **Logging & observabilité** | Loguru, métriques de latence par route |
 
 ---
 
@@ -291,7 +371,29 @@ kcorp-scouting/
 ├── LICENSE                          # MIT
 ├── Makefile                         # Commandes automatisées
 ├── pyproject.toml                   # Config projet Python
-├── requirements.txt                 # Dépendances
+├── requirements.txt                 # Dépendances du pipeline
+├── requirements-api.txt             # Dépendances de l'API seule (sans ML)
+├── requirements-dashboard.txt       # Dépendances du dashboard seul
+├── Dockerfile                       # Image de l'API (build en deux étages)
+├── Dockerfile.dashboard             # Image du dashboard
+├── docker-compose.yml               # API + dashboard ensemble
+│
+├── api/                             # API REST (FastAPI)
+│   ├── main.py                      # Application et middlewares
+│   ├── config.py                    # Chemins et paramètres
+│   ├── data.py                      # Chargement en mémoire, calcul de similarité
+│   ├── schemas.py                   # Contrats de réponse (Pydantic)
+│   ├── serialization.py             # Conversion pandas vers JSON
+│   ├── observability.py             # Latences, volumes, erreurs par route
+│   └── routers/                     # players, reference, system
+│
+├── dbt/                             # Transformation et qualité des données
+│   ├── dbt_project.yml
+│   ├── profiles.yml                 # DuckDB, aucun secret
+│   ├── models/staging/              # Nettoyage et renommage (vues)
+│   ├── models/marts/                # Faits, dimension, marts (tables)
+│   ├── macros/                      # Test générique d'unicité composite
+│   └── tests/                       # Tests singuliers (plages de valeurs)
 │
 ├── data/                            # Données (non versionnées)
 │   ├── raw/                         # CSV bruts Oracle's Elixir
