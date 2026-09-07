@@ -32,9 +32,12 @@ Pourquoi un cache local ?
   localement et sa taille pour s'assurer qu'il n'est pas corrompu.
 """
 
+import json
+import os
 import sys
 import time
 from dataclasses import dataclass, field
+from datetime import date
 from enum import Enum
 from pathlib import Path
 
@@ -45,6 +48,7 @@ from src.config import (
     GDRIVE_DOWNLOAD_URL,
     GOOGLE_DRIVE_IDS,
     MAX_RETRIES,
+    METRICS_DIR,
     MIN_VALID_CSV_BYTES,
     RAW_DATA_DIR,
     RETRY_DELAY,
@@ -100,9 +104,7 @@ class DownloadReport:
         rien à corriger dans le dépôt.
         """
         failures = [o for o in self.outcomes.values() if o is not DownloadOutcome.OK]
-        return bool(failures) and all(
-            o is DownloadOutcome.SOURCE_UNAVAILABLE for o in failures
-        )
+        return bool(failures) and all(o is DownloadOutcome.SOURCE_UNAVAILABLE for o in failures)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -136,6 +138,126 @@ def _get_confirm_token(response: requests.Response) -> str | None:
     return None
 
 
+def _drive_api_credentials() -> tuple[str, str] | None:
+    """
+    Récupère le jeton d'accès Drive et le projet de quota, s'ils existent.
+
+    Les deux viennent de l'environnement, jamais du dépôt :
+      - GOOGLE_DRIVE_ACCESS_TOKEN : jeton OAuth portant le scope drive.readonly.
+        En CI il est produit par `google-github-actions/auth`, qui s'authentifie
+        par fédération d'identité OIDC. Aucune clé n'est stockée nulle part, ce
+        qui tombe bien : la politique du projet Google Cloud interdit de toute
+        façon la création de clés de compte de service.
+      - GOOGLE_CLOUD_PROJECT : sans lui, l'API Drive répond 403 avec un message
+        sur les « Application Default Credentials » qui envoie chercher au
+        mauvais endroit. Constaté en test le 2026-09-07.
+
+    En local, aucune des deux n'est définie : on garde la voie anonyme, donc
+    rien ne change pour qui clone le dépôt.
+    """
+    token = os.environ.get("GOOGLE_DRIVE_ACCESS_TOKEN", "").strip()
+    project = os.environ.get("GOOGLE_CLOUD_PROJECT", "").strip()
+    if token and project:
+        return token, project
+    return None
+
+
+def _looks_like_oracles_elixir_csv(destination: Path) -> bool:
+    """
+    Vérifie qu'un fichier téléchargé est bien un export Oracle's Elixir.
+
+    Deux garde-fous, factorisés pour que les deux chemins d'acquisition aient
+    exactement la même exigence : la taille minimale, puis la présence de la
+    colonne `gameid`. Un fichier rejeté est supprimé, pour ne pas empoisonner
+    le cache local.
+    """
+    file_size = destination.stat().st_size
+    if file_size < MIN_VALID_CSV_BYTES:
+        head = destination.read_text(encoding="utf-8", errors="ignore")[:200]
+        logger.error(
+            f"Fichier rejeté : {destination.name} ne fait que {file_size} "
+            f"octets (minimum attendu : {MIN_VALID_CSV_BYTES}). "
+            f"Contenu reçu : {head!r}"
+        )
+        destination.unlink()
+        return False
+
+    with open(destination, "r", encoding="utf-8", errors="ignore") as f:
+        header = f.readline()
+    if "gameid" not in header.lower():
+        logger.error(
+            f"Fichier rejeté : l'en-tête de {destination.name} ne ressemble "
+            f"pas à un export Oracle's Elixir (colonne `gameid` absente). "
+            f"En-tête reçu : {header[:200]!r}"
+        )
+        destination.unlink()
+        return False
+
+    return True
+
+
+def _download_via_drive_api(file_id: str, destination: Path, token: str, project: str) -> DownloadOutcome:
+    """
+    Télécharge un fichier par l'API Drive, en authentifié.
+
+    Pourquoi cette voie existe, et pourquoi elle passe en premier :
+      Le compte qui héberge les exports d'Oracle's Elixir dépasse en permanence
+      son quota de partage. Google répond alors une page « Quota exceeded » à
+      tout téléchargement ANONYME, ce qui a figé les données publiées pendant
+      sept semaines, du 20 juillet au 7 septembre 2026, sans que rien n'échoue.
+      Vérifié en réel le 2026-09-07 : le même fichier, demandé à l'API Drive
+      avec un jeton OAuth valide, revient en HTTP 200 et 67 Mo. Le quota ne
+      frappe donc que les accès non authentifiés.
+
+    Returns:
+        OK si le fichier est valide, SOURCE_UNAVAILABLE si l'API refuse pour une
+        raison temporaire, INVALID_CONTENT si le contenu est inexploitable.
+    """
+    url = f"https://www.googleapis.com/drive/v3/files/{file_id}"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "X-Goog-User-Project": project,
+    }
+
+    response = requests.get(
+        url,
+        headers=headers,
+        params={"alt": "media"},
+        stream=True,
+        timeout=60,
+    )
+
+    # 401 et 403 ne disent pas la même chose et n'appellent pas la même
+    # réaction : le premier est un jeton expiré ou mal scopé, donc un problème
+    # de configuration du dépôt ; le second peut être un quota d'API, donc une
+    # cause externe qui se règle d'elle-même.
+    if response.status_code == 401:
+        logger.error(
+            "L'API Drive a refusé le jeton (401). Il est expiré, ou il ne porte "
+            "pas le scope https://www.googleapis.com/auth/drive.readonly. "
+            "Vérifier l'étape d'authentification du workflow."
+        )
+        return DownloadOutcome.INVALID_CONTENT
+
+    if response.status_code == 403:
+        logger.warning(f"L'API Drive a répondu 403, repli sur la voie anonyme. Détail : {response.text[:300]!r}")
+        return DownloadOutcome.SOURCE_UNAVAILABLE
+
+    response.raise_for_status()
+
+    with open(destination, "wb") as f:
+        for chunk in response.iter_content(chunk_size=32768):
+            if chunk:
+                f.write(chunk)
+
+    if not _looks_like_oracles_elixir_csv(destination):
+        return DownloadOutcome.INVALID_CONTENT
+
+    size_mb = destination.stat().st_size / (1024 * 1024)
+    logger.success(f"Téléchargé par l'API Drive (authentifié) : {destination.name} ({size_mb:.1f} Mo)")
+    return DownloadOutcome.OK
+
+
 def _download_from_gdrive(file_id: str, destination: Path) -> bool:
     """
     Télécharge un fichier depuis Google Drive avec gestion des gros fichiers.
@@ -157,6 +279,19 @@ def _download_from_gdrive(file_id: str, destination: Path) -> bool:
         INVALID_CONTENT dans tous les autres cas de contenu inexploitable.
     """
     session = requests.Session()
+
+    # ── Voie authentifiée, essayée en premier ────────────────────────────
+    # Elle n'est disponible qu'en CI, où le workflow fournit un jeton. En cas
+    # d'échec temporaire de l'API, on retombe sur la voie anonyme plutôt que
+    # d'abandonner : elle marche encore les jours où le quota se libère.
+    credentials = _drive_api_credentials()
+    if credentials is not None:
+        token, project = credentials
+        logger.info("Acquisition authentifiée par l'API Drive...")
+        outcome = _download_via_drive_api(file_id, destination, token, project)
+        if outcome is DownloadOutcome.OK:
+            return outcome
+        logger.warning("L'API Drive n'a pas abouti, nouvelle tentative par la voie anonyme.")
 
     # Première requête : peut retourner le fichier directement OU une page
     # de confirmation si le fichier est trop volumineux
@@ -222,38 +357,18 @@ def _download_from_gdrive(file_id: str, destination: Path) -> bool:
                 f.write(chunk)
                 downloaded += len(chunk)
 
-    # ── Garde-fou n°2 : la taille ────────────────────────────────────────
-    # Les CSV Oracle's Elixir font 24 à 77 Mo. Le seuil précédent était de
-    # 1 Ko, ce qui laissait passer les pages d'erreur de Google (2 Ko) :
-    # le fichier était alors annoncé « téléchargé (0.0 Mo) », et l'échec
-    # ne se manifestait que 3 étapes plus loin, sous la forme trompeuse
-    # d'une dérive de schéma. Le seuil est aligné sur celui du cache.
-    file_size = destination.stat().st_size
-    if file_size < MIN_VALID_CSV_BYTES:
-        head = destination.read_text(encoding="utf-8", errors="ignore")[:500]
-        logger.error(
-            f"Fichier rejeté : {destination.name} ne fait que {file_size} "
-            f"octets (minimum attendu : {MIN_VALID_CSV_BYTES}). "
-            f"Contenu reçu : {head[:200]!r}"
-        )
-        destination.unlink()
+    # ── Garde-fous n°2 et n°3 : la taille, puis l'en-tête CSV ────────────
+    # Les mêmes que sur la voie authentifiée, et volontairement au même
+    # endroit du code : une seule définition, donc aucun risque que les deux
+    # chemins d'acquisition finissent par accepter des choses différentes.
+    # Rappel de ce qu'ils attrapent : une page d'erreur Google fait 2 Ko et
+    # passait autrefois pour un fichier « téléchargé (0.0 Mo) », l'échec ne
+    # se manifestant que trois étapes plus loin sous la forme trompeuse
+    # d'une dérive de schéma.
+    if not _looks_like_oracles_elixir_csv(destination):
         return DownloadOutcome.INVALID_CONTENT
 
-    # ── Garde-fou n°3 : l'en-tête CSV ────────────────────────────────────
-    # Un fichier de la bonne taille peut quand même ne pas être le bon CSV.
-    # La colonne `gameid` est présente dans tous les exports Oracle's Elixir.
-    with open(destination, "r", encoding="utf-8", errors="ignore") as f:
-        header = f.readline()
-    if "gameid" not in header.lower():
-        logger.error(
-            f"Fichier rejeté : l'en-tête de {destination.name} ne ressemble "
-            f"pas à un export Oracle's Elixir (colonne `gameid` absente). "
-            f"En-tête reçu : {header[:200]!r}"
-        )
-        destination.unlink()
-        return DownloadOutcome.INVALID_CONTENT
-
-    size_mb = file_size / (1024 * 1024)
+    size_mb = destination.stat().st_size / (1024 * 1024)
     logger.success(f"Téléchargé : {destination.name} ({size_mb:.1f} Mo)")
     return DownloadOutcome.OK
 
@@ -263,9 +378,7 @@ def _download_from_gdrive(file_id: str, destination: Path) -> bool:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
-def download_csv(
-    year: int, force: bool = False
-) -> tuple[Path | None, DownloadOutcome]:
+def download_csv(year: int, force: bool = False) -> tuple[Path | None, DownloadOutcome]:
     """
     Télécharge le CSV Oracle's Elixir pour une année donnée.
 
@@ -285,10 +398,7 @@ def download_csv(
         ValueError: Si l'année n'est pas dans GOOGLE_DRIVE_IDS
     """
     if year not in GOOGLE_DRIVE_IDS:
-        raise ValueError(
-            f"Année {year} non disponible. "
-            f"Années valides : {list(GOOGLE_DRIVE_IDS.keys())}"
-        )
+        raise ValueError(f"Année {year} non disponible. Années valides : {list(GOOGLE_DRIVE_IDS.keys())}")
 
     # Créer le dossier data/raw/ s'il n'existe pas
     RAW_DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -309,10 +419,7 @@ def download_csv(
             )
             return filepath, DownloadOutcome.OK
         else:
-            logger.warning(
-                f"Fichier {filename} trouvé mais trop petit ({file_size} octets). "
-                f"Re-téléchargement..."
-            )
+            logger.warning(f"Fichier {filename} trouvé mais trop petit ({file_size} octets). Re-téléchargement...")
 
     # ── Téléchargement avec retry ────────────────────────────────────────
     file_id = GOOGLE_DRIVE_IDS[year]
@@ -328,27 +435,19 @@ def download_csv(
             if last_outcome is DownloadOutcome.OK:
                 return filepath, DownloadOutcome.OK
             else:
-                logger.warning(
-                    f"Tentative {attempt}/{MAX_RETRIES} échouée pour {filename}"
-                )
+                logger.warning(f"Tentative {attempt}/{MAX_RETRIES} échouée pour {filename}")
                 # Inutile d'insister sur un quota : il ne se libère pas en
                 # quelques secondes, et les trois tentatives sont du bruit.
                 if last_outcome is DownloadOutcome.SOURCE_UNAVAILABLE:
                     break
         except requests.exceptions.Timeout:
-            logger.warning(
-                f"Tentative {attempt}/{MAX_RETRIES} — Timeout (le serveur met trop "
-                f"de temps à répondre)"
-            )
+            logger.warning(f"Tentative {attempt}/{MAX_RETRIES} — Timeout (le serveur met trop de temps à répondre)")
         except requests.exceptions.ConnectionError:
             logger.warning(
-                f"Tentative {attempt}/{MAX_RETRIES} — Erreur de connexion "
-                f"(vérifiez votre connexion internet)"
+                f"Tentative {attempt}/{MAX_RETRIES} — Erreur de connexion (vérifiez votre connexion internet)"
             )
         except requests.exceptions.RequestException as e:
-            logger.warning(
-                f"Tentative {attempt}/{MAX_RETRIES} — Erreur réseau : {e}"
-            )
+            logger.warning(f"Tentative {attempt}/{MAX_RETRIES} — Erreur réseau : {e}")
 
         if attempt < MAX_RETRIES:
             wait_time = RETRY_DELAY * attempt  # Backoff exponentiel simple
@@ -389,11 +488,11 @@ def download_all(
         years = DATA_YEARS
 
     report = DownloadReport()
-    logger.info(f"{'='*60}")
+    logger.info(f"{'=' * 60}")
     logger.info("📥 ORACLE'S ELIXIR — Téléchargement des données")
     logger.info(f"   Années : {years}")
     logger.info(f"   Destination : {RAW_DATA_DIR}")
-    logger.info(f"{'='*60}")
+    logger.info(f"{'=' * 60}")
 
     for year in years:
         filepath, outcome = download_csv(year, force=force)
@@ -404,7 +503,7 @@ def download_all(
     # Résumé
     success = len(report.files)
     total = len(years)
-    logger.info(f"{'='*60}")
+    logger.info(f"{'=' * 60}")
     if success == total:
         logger.success(f"✅ Téléchargement terminé : {success}/{total} fichiers OK")
     elif report.source_unavailable:
@@ -415,12 +514,47 @@ def download_all(
         )
     else:
         logger.warning(
-            f"⚠️  Téléchargement partiel : {success}/{total} fichiers récupérés. "
-            f"Années manquantes : {report.missing}"
+            f"⚠️  Téléchargement partiel : {success}/{total} fichiers récupérés. Années manquantes : {report.missing}"
         )
-    logger.info(f"{'='*60}")
+    logger.info(f"{'=' * 60}")
 
     return report
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Garde-fou de fraîcheur
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Au-delà de ce délai, une source indisponible cesse d'être un incident passager.
+# Le chiffre vient d'un cas réel : entre le 20 juillet et le 7 septembre 2026, le
+# workflow est sorti en vert chaque semaine pendant que les données publiées
+# vieillissaient de sept semaines. Personne n'a rien vu, précisément parce que
+# rien n'échouait. Trois semaines laissent passer une panne ordinaire et
+# rattrapent celle qui s'installe.
+MAX_JOURS_SANS_REFRESH = 21
+
+
+def jours_depuis_dernier_refresh() -> int | None:
+    """
+    Âge, en jours, des snapshots actuellement publiés.
+
+    La source de vérité est `generated_at` dans refresh_metadata.json, écrit à
+    chaque refresh réussi et versionné. Pas d'état à maintenir à côté, et
+    surtout : on mesure la fraîcheur réelle de ce que voient les utilisateurs,
+    pas le nombre d'exécutions ratées.
+
+    Returns:
+        Le nombre de jours, ou None si le fichier est absent ou illisible.
+    """
+    metadata = METRICS_DIR / "refresh_metadata.json"
+    if not metadata.exists():
+        return None
+    try:
+        contenu = json.loads(metadata.read_text(encoding="utf-8"))
+        genere_le = date.fromisoformat(contenu["generated_at"])
+    except (json.JSONDecodeError, KeyError, ValueError):
+        return None
+    return (date.today() - genere_le).days
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -443,6 +577,23 @@ if __name__ == "__main__":
     _report = download_all()
 
     if _report.source_unavailable:
+        _age = jours_depuis_dernier_refresh()
+
+        # Une source indisponible ne justifie une sortie silencieuse que tant
+        # que les données publiées restent fraîches. Passé le délai, le silence
+        # devient le problème : le workflow doit échouer bruyamment, même si la
+        # cause reste extérieure au dépôt.
+        if _age is not None and _age > MAX_JOURS_SANS_REFRESH:
+            logger.error(
+                f"Les snapshots publiés datent de {_age} jours, au-delà du "
+                f"seuil de {MAX_JOURS_SANS_REFRESH}. La source est toujours "
+                f"indisponible, mais un échec silencieux qui dure n'est plus un "
+                f"incident passager : le dashboard sert des données périmées. "
+                f"Vérifier l'authentification Drive du workflow avant de "
+                f"conclure à une panne externe."
+            )
+            sys.exit(1)
+
         logger.warning(
             f"Arrêt propre : les données ne sont pas récupérables pour "
             f"l'instant (années {_report.missing}). La cause est extérieure "
