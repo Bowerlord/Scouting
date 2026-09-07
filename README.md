@@ -346,6 +346,20 @@ Le dépôt contient un `.mcp.json` prêt à l'emploi. Exemple d'échange réel :
 > `Profil neutre` — 169 joueurs, 3,0 %
 > `Profil neutre` — 110 joueurs, 2,7 %
 
+### Déployer sur Cloud Run
+
+```bash
+./deploy/cloud-run.sh <ID_DU_PROJET>
+```
+
+Le script active les API, crée le dépôt d'images, construit par Cloud Build, déploie, puis **interroge `/health` pour vérifier que le service sert réellement des données**. Un déploiement qui réussit ne prouve pas que l'API répond.
+
+L'image est construite à distance par Cloud Build plutôt qu'en local : cela produit une image amd64 quelle que soit la machine de développement, et ne demande pas Docker sur le poste.
+
+**Coût attendu : zéro.** Le palier gratuit couvre 2 millions de requêtes par mois, et le service est configuré avec `--min-instances=0` : il s'éteint au repos.
+
+Trois prérequis ne sont pas scriptables, parce qu'ils demandent un compte : un projet Google Cloud avec la facturation activée, le [SDK gcloud](https://cloud.google.com/sdk/docs/install), et `gcloud auth login`.
+
 ### Ce que la CI vérifie
 
 | Job | Contrôle |
