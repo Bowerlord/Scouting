@@ -30,7 +30,14 @@ def health() -> HealthResponse:
     except DataNotAvailable as error:
         raise HTTPException(status_code=503, detail=str(error)) from error
 
-    refreshed_at = store.refresh_metadata.get("refreshed_at") or store.refresh_metadata.get("last_refresh")
+    # `generated_at` est la clé qu'écrit réellement le pipeline ; sans elle le
+    # champ restait toujours nul, ce qui donnait à croire qu'aucun refresh
+    # n'avait jamais eu lieu. Les deux autres noms sont conservés par sécurité.
+    refreshed_at = (
+        store.refresh_metadata.get("generated_at")
+        or store.refresh_metadata.get("refreshed_at")
+        or store.refresh_metadata.get("last_refresh")
+    )
 
     return HealthResponse(
         status="ok",
