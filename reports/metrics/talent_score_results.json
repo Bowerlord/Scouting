@@ -2,35 +2,35 @@
   "comparison": [
     {
       "model_name": "Logistic Regression (baseline)",
-      "pr_auc": 0.1326,
-      "roc_auc": 0.7097,
-      "precision_at_61": 0.1311,
-      "recall_at_61": 0.1311,
-      "k": 61
+      "pr_auc": 0.1673,
+      "roc_auc": 0.717,
+      "precision_at_66": 0.1364,
+      "recall_at_66": 0.1364,
+      "k": 66
     },
     {
       "model_name": "Random Forest",
-      "pr_auc": 0.1157,
-      "roc_auc": 0.688,
-      "precision_at_61": 0.0984,
-      "recall_at_61": 0.0984,
-      "k": 61
-    },
-    {
-      "model_name": "Random Forest (tuned)",
-      "pr_auc": 0.1034,
-      "roc_auc": 0.6405,
-      "precision_at_61": 0.1311,
-      "recall_at_61": 0.1311,
-      "k": 61
+      "pr_auc": 0.1365,
+      "roc_auc": 0.6966,
+      "precision_at_66": 0.1515,
+      "recall_at_66": 0.1515,
+      "k": 66
     },
     {
       "model_name": "XGBoost",
-      "pr_auc": 0.0899,
-      "roc_auc": 0.6095,
-      "precision_at_61": 0.0984,
-      "recall_at_61": 0.0984,
-      "k": 61
+      "pr_auc": 0.1245,
+      "roc_auc": 0.6235,
+      "precision_at_66": 0.1364,
+      "recall_at_66": 0.1364,
+      "k": 66
+    },
+    {
+      "model_name": "Random Forest (tuned)",
+      "pr_auc": 0.1174,
+      "roc_auc": 0.6517,
+      "precision_at_66": 0.1667,
+      "recall_at_66": 0.1667,
+      "k": 66
     }
   ],
   "best_model": "Logistic Regression (baseline)",
@@ -67,6 +67,6 @@
   },
   "rf_tuned_cv_pr_auc": 0.5358,
   "calibration_method": "sigmoid",
-  "brier_score_raw": 0.1615,
-  "brier_score_calibrated": 0.0626
+  "brier_score_raw": 0.1603,
+  "brier_score_calibrated": 0.0652
 }
