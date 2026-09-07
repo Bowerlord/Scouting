@@ -1,5 +1,5 @@
 # ══════════════════════════════════════════════════════════════════════════════
-# KCorp Scouting Tool — Dépendances de développement
+# ERL Scout — Dépendances de développement
 # ══════════════════════════════════════════════════════════════════════════════
 # Outils de test, lint et formatage. Utilisés en local et par la CI GitHub Actions.
 # Installation : pip install -r requirements-dev.txt

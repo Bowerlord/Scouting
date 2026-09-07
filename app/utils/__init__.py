@@ -1,5 +1,5 @@
 """
-utils/__init__.py — Package utilitaire de l'application KCorp Scouting Tool
+utils/__init__.py — Package utilitaire de l'application ERL Scout
 
 Expose les fonctions de chargement de données pour une importation directe
 depuis les pages Streamlit :

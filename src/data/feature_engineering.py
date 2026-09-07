@@ -1,7 +1,7 @@
 """
 feature_engineering.py — Transformation des données pour le Machine Learning
 
-Ce module correspond à la Phase 4 du projet KCorp Scouting Tool.
+Ce module correspond à la Phase 4 du projet ERL Scout.
 Son objectif est de transformer les statistiques de matchs brutes (une ligne par match)
 en un ensemble de "features" (caractéristiques) par joueur et par segment (split),
 prêtes à être ingérées par un algorithme d'apprentissage automatique.
@@ -221,7 +221,7 @@ def run_feature_engineering_pipeline(
 ) -> pd.DataFrame:
     """Point d'entrée du module, exécute toutes les étapes dans l'ordre."""
     logger.info("============================================================")
-    logger.info("⚙️  KCORP SCOUTING PIPELINE — PHASE 4 : FEATURE ENGINEERING")
+    logger.info("⚙️  ERL SCOUT — PHASE 4 : FEATURE ENGINEERING")
     logger.info("============================================================")
 
     # Étape 1

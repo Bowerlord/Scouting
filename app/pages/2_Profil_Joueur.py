@@ -36,17 +36,26 @@ from utils.data_loader import (
     load_talent_scores,
 )
 
+from utils import theme
+
 # ══════════════════════════════════════════════════════════════════════════════
 # Configuration de la page
 # ══════════════════════════════════════════════════════════════════════════════
 
 st.set_page_config(
-    page_title="Profil Joueur — KCorp Scouting",
+    page_title="Profil Joueur — ERL Scout",
     page_icon="👤",
     layout="wide",
 )
 
-st.title("👤 Profil Joueur")
+theme.appliquer()
+
+theme.entete(
+    "Fiche individuelle",
+    "Profil joueur",
+    "Performances détaillées d'un joueur, exprimées en écarts-types par rapport "
+    "aux autres joueurs de son poste dans sa ligue.",
+)
 st.markdown("Vue détaillée des métriques et de l'archétype ML d'un joueur.")
 
 # ══════════════════════════════════════════════════════════════════════════════

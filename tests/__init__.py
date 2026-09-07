@@ -1,1 +1,1 @@
-"""Tests — KCorp Scouting Tool."""
+"""Tests — ERL Scout."""

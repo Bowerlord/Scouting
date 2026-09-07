@@ -1,5 +1,5 @@
 """
-app.py — Point d'entrée principal du KCorp Scouting Tool
+app.py — Point d'entrée principal du ERL Scout
 
 Cette page d'accueil présente :
   - Un titre et une description de l'outil
@@ -29,12 +29,14 @@ sys.path.insert(0, str(Path(__file__).parent))
 import streamlit as st
 from utils.data_loader import load_model_metrics, load_refresh_metadata, load_talent_scores
 
+from utils import theme
+
 # ══════════════════════════════════════════════════════════════════════════════
 # Configuration de la page
 # ══════════════════════════════════════════════════════════════════════════════
 
 st.set_page_config(
-    page_title="KCorp Scouting Tool",
+    page_title="ERL Scout",
     page_icon="🎯",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -44,18 +46,15 @@ st.set_page_config(
 # En-tête
 # ══════════════════════════════════════════════════════════════════════════════
 
-st.title("🎯 KCorp Scouting Tool")
-st.markdown(
-    """
-    Outil de scouting esport alimenté par le **Machine Learning** pour League of Legends.
+theme.appliquer()
 
-    Identifiez les talents émergents des ligues ERL (LFL, PRM, LVP SL, NLC, TCL)
-    avant leur promotion en **LEC** — grâce à un modèle entraîné sur les données
-    Oracle's Elixir.
-    """
+theme.entete(
+    "Détection de talents · League of Legends",
+    "ERL Scout",
+    "Identifie les joueurs des ligues régionales européennes qui ont le profil pour "
+    "passer en LEC, à partir des données de matchs Oracle's Elixir et d'un modèle "
+    "entraîné sur les promotions observées.",
 )
-
-st.divider()
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Métriques globales du dataset
@@ -69,14 +68,14 @@ try:
     with col1:
         # len(df) compte des lignes joueur/split ; on affiche les deux niveaux
         st.metric(
-            label="Joueurs analysés",
+            label="Joueurs",
             value=f"{df['playername'].nunique():,}",
             help=f"{len(df):,} lignes joueur × split au total.",
         )
 
     with col2:
         st.metric(
-            label="Ligues couvertes",
+            label="Ligues",
             value=df["league"].nunique(),
         )
 
@@ -90,10 +89,13 @@ try:
 
     with col4:
         years = sorted(df["_source_year"].dropna().unique().astype(int).tolist())
-        years_label = " · ".join(str(y) for y in years)
+        # Une plage bornee tient sur une carte, la liste complete non : elle
+        # etait tronquee par des points de suspension. Constate au rendu.
+        etendue = f"{years[0]}–{years[-1]}" if len(years) > 1 else str(years[0])
         st.metric(
-            label="Années",
-            value=years_label,
+            label="Saisons",
+            value=etendue,
+            help=" · ".join(str(y) for y in years),
         )
 
 except FileNotFoundError as e:
@@ -116,7 +118,7 @@ col_a, col_b, col_c = st.columns(3)
 with col_a:
     st.markdown(
         """
-        ### 📊 Leaderboard
+        ### Leaderboard
         Classement de tous les joueurs par **talent score**.
 
         - Filtres : position, ligue, année, score minimum
@@ -128,7 +130,7 @@ with col_a:
 with col_b:
     st.markdown(
         """
-        ### 👤 Profil Joueur
+        ### Profil Joueur
         Vue détaillée d'un joueur individuel.
 
         - Radar chart multi-dimensionnel des z-scores
@@ -140,7 +142,7 @@ with col_b:
 with col_c:
     st.markdown(
         """
-        ### 🔍 Scout Mode
+        ### Scout Mode
         Scouting avancé par critères et par similarité.
 
         - Shortlist filtrée par position, archétype, ligue, score
@@ -199,4 +201,4 @@ with st.sidebar:
             f"📅 Données à jour du {refresh_meta['data_max_date']}{generated_label}"
         )
 
-    st.caption("KCorp Scouting Tool")
+    st.caption("ERL Scout")

@@ -1,5 +1,5 @@
 [project]
-name = "kcorp-scouting"
+name = "erl-scout"
 version = "0.1.0"
 description = "🏆 Outil ML de scouting esport pour identifier les pépites dans les ERLs européennes de League of Legends"
 readme = "README.md"

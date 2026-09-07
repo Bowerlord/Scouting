@@ -26,18 +26,26 @@ import plotly.express as px
 import streamlit as st
 from utils.data_loader import load_talent_scores
 
+from utils import theme
+
 # ══════════════════════════════════════════════════════════════════════════════
 # Configuration de la page
 # ══════════════════════════════════════════════════════════════════════════════
 
 st.set_page_config(
-    page_title="Leaderboard — KCorp Scouting",
+    page_title="Leaderboard — ERL Scout",
     page_icon="📊",
     layout="wide",
 )
 
-st.title("📊 Leaderboard")
-st.markdown("Classement de tous les joueurs ERL par **talent score** ML.")
+theme.appliquer()
+
+theme.entete(
+    "Classement",
+    "Leaderboard",
+    "Tous les joueurs des ligues régionales, ordonnés par score de talent. "
+    "Le score est très asymétrique : comparez les percentiles plutôt que les écarts bruts.",
+)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Chargement des données

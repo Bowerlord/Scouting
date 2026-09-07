@@ -477,7 +477,7 @@ def run_talent_scoring_pipeline():
     sauvegarde le meilleur modèle et les résultats.
     """
     logger.info("=" * 60)
-    logger.info("🎯 KCORP SCOUTING PIPELINE — PHASE 5 : TALENT SCORE")
+    logger.info("🎯 ERL SCOUT — PHASE 5 : TALENT SCORE")
     logger.info("=" * 60)
 
     # ── Chargement et split ──────────────────────────────────────────────────
