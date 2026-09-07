@@ -1,4 +1,4 @@
-# 🏆 KCorp Scouting Tool
+# 🏆 ERL Scout
 
 [![Démo en ligne](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://scouting-lol-erl.streamlit.app/)
 [![CI](https://github.com/Bowerlord/Scouting/actions/workflows/ci.yml/badge.svg)](https://github.com/Bowerlord/Scouting/actions/workflows/ci.yml)
@@ -16,7 +16,9 @@ curl https://scouting-api-7750158787.europe-west1.run.app/leaderboard?position=m
 
 Trois vues interactives : **Leaderboard** (classement des 3 098 joueurs par talent score), **Profil Joueur** (radar de performance et archétype ML) et **Scout Mode** (shortlist par critères et recherche de joueurs similaires par clustering).
 
-Ce projet simule un outil de scouting data-driven pour la structure esport [Karmine Corp](https://www.karminecorp.fr/). L'objectif : analyser les performances des joueurs amateurs dans les ERLs (European Regional Leagues) et prédire lesquels ont le potentiel pour évoluer au plus haut niveau (LEC).
+Ce projet est un outil de scouting data-driven pour les ligues régionales européennes de League of Legends. L'objectif : analyser les performances des joueurs des **ERL** (European Regional Leagues) et estimer lesquels ont le potentiel d'évoluer en **LEC**, la division supérieure.
+
+*Projet personnel à but pédagogique, sans lien ni affiliation avec une structure esport.*
 
 ---
 
@@ -424,7 +426,7 @@ Les données proviennent de deux sources principales :
 ## 📁 Structure du Repository
 
 ```
-kcorp-scouting/
+erl-scout/
 │
 ├── README.md                        # Ce fichier
 ├── DATA_SOURCES.md                  # Documentation des sources de données

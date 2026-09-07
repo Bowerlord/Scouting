@@ -1,5 +1,5 @@
 """
-config.py — Configuration centralisée du projet KCorp Scouting Tool
+config.py — Configuration centralisée du projet ERL Scout
 
 Ce fichier regroupe toutes les constantes et paramètres du projet :
   - Chemins vers les dossiers de données

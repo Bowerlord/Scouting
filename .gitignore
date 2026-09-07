@@ -78,3 +78,6 @@ dbt/logs/
 *.duckdb
 *.duckdb.wal
 dbt/.user.yml
+
+# Configuration locale de lancement (specifique a la machine)
+.claude/

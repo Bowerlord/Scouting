@@ -109,7 +109,7 @@ def _cargo_query(
             LEAGUEPEDIA_API_URL,
             params=params,
             timeout=30,
-            headers={"User-Agent": "KCorpScoutingTool/1.0 (educational project)"},
+            headers={"User-Agent": "ERLScout/1.0 (projet personnel, non commercial)"},
         )
         response.raise_for_status()
         data = response.json()

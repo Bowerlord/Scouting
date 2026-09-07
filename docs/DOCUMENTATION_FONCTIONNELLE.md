@@ -1,4 +1,4 @@
-# KCorp Scouting Tool — Documentation Fonctionnelle
+# ERL Scout — Documentation Fonctionnelle
 
 > Ce document explique le projet **sans prérequis technique**. Si vous savez ce
 > qu'est League of Legends, vous avez tout ce qu'il faut. Les termes marqués

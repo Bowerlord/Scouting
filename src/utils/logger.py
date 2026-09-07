@@ -61,7 +61,7 @@ logger.add(
 # Rotation : nouveau fichier tous les jours ou quand le fichier dépasse 10 Mo
 # Rétention : on garde les logs des 7 derniers jours
 logger.add(
-    LOG_DIR / "kcorp_scouting_{time:YYYY-MM-DD}.log",
+    LOG_DIR / "erl_scout_{time:YYYY-MM-DD}.log",
     format=FILE_FORMAT,
     level="DEBUG",  # On log tout dans le fichier, même si la console filtre
     rotation="10 MB",

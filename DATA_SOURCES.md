@@ -1,4 +1,4 @@
-# 📊 Sources de Données — KCorp Scouting Tool
+# 📊 Sources de Données — ERL Scout
 
 Ce document décrit les sources de données utilisées dans le projet, leur format, leur couverture, et les choix techniques associés.
 

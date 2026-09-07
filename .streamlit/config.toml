@@ -1,14 +1,23 @@
-# Configuration du dashboard Streamlit (KCorp Scouting Tool)
-# Thème sombre cohérent avec les visualisations du projet (fond #0f172a).
+# Thème du dashboard ERL Scout.
+#
+# Refondu le 2026-09-07. L'ancien thème combinait un fond slate-900 et un bleu
+# #3b82f6 : la palette par défaut de Tailwind, c'est-à-dire exactement ce à quoi
+# ressemble une interface que personne n'a stylée.
+#
+# Le parti pris : un noir neutre plutôt que bleuté, et un seul accent ambre.
+# L'ambre évoque la distinction et le classement, ce qui est le sujet de l'outil,
+# et il ne ressemble à aucun tableau de bord générique.
 
 [theme]
 base = "dark"
-primaryColor = "#3b82f6"          # Bleu (accent Karmine-like)
-backgroundColor = "#0f172a"       # Fond principal (slate 900)
-secondaryBackgroundColor = "#1e293b"  # Panneaux (slate 800)
-textColor = "#f1f5f9"             # Texte clair (slate 100)
+primaryColor = "#E0A82E"              # Ambre : le seul accent, réservé aux valeurs qui comptent
+backgroundColor = "#0D0D0F"           # Noir neutre, sans dominante bleue
+secondaryBackgroundColor = "#17171A"  # Surfaces et panneaux
+textColor = "#E8E6E3"                 # Blanc cassé, moins agressif qu'un blanc pur
 font = "sans serif"
 
 [server]
-# Confort local ; sans effet sur Streamlit Community Cloud.
 headless = true
+
+[browser]
+gatherUsageStats = false

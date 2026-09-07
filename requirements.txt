@@ -1,5 +1,5 @@
 # ══════════════════════════════════════════════════════════════════════════════
-# KCorp Scouting Tool — Dépendances
+# ERL Scout — Dépendances
 # ══════════════════════════════════════════════════════════════════════════════
 # Pour installer : pip install -r requirements.txt
 

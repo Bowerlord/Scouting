@@ -1,4 +1,4 @@
-# Documentation Technique — KCorp Scouting Tool
+# Documentation Technique — ERL Scout
 
 > Public visé : développeur ou data scientist reprenant le projet.
 > Pour une présentation accessible à tous, voir [DOCUMENTATION_FONCTIONNELLE.md](DOCUMENTATION_FONCTIONNELLE.md).

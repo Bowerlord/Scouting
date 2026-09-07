@@ -43,17 +43,26 @@ from utils.data_loader import (
     load_talent_scores,
 )
 
+from utils import theme
+
 # ══════════════════════════════════════════════════════════════════════════════
 # Configuration de la page
 # ══════════════════════════════════════════════════════════════════════════════
 
 st.set_page_config(
-    page_title="Scout Mode — KCorp Scouting",
+    page_title="Scout Mode — ERL Scout",
     page_icon="🔍",
     layout="wide",
 )
 
-st.title("🔍 Scout Mode")
+theme.appliquer()
+
+theme.entete(
+    "Recherche avancée",
+    "Scout mode",
+    "Filtrez sur des critères combinés, ou partez d'un joueur pour trouver ceux "
+    "dont le profil de jeu est le plus proche.",
+)
 st.markdown(
     "Générez une **shortlist** ciblée ou trouvez des joueurs similaires "
     "grâce au clustering ML."

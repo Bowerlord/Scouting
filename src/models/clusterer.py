@@ -259,7 +259,7 @@ def run_clustering_pipeline():
       4. Sauvegarde des modèles, métriques et CSV
     """
     logger.info("=" * 60)
-    logger.info("KCORP SCOUTING — PHASE 6 : PLAYSTYLE CLUSTERING PAR POSITION")
+    logger.info("ERL SCOUT — PHASE 6 : PLAYSTYLE CLUSTERING PAR POSITION")
     logger.info("=" * 60)
 
     MODELS_DIR.mkdir(parents=True, exist_ok=True)
