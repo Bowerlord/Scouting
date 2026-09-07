@@ -82,7 +82,12 @@ echo "==> Vérification de la santé du service"
 
 # Un déploiement qui réussit ne prouve pas que le service sert les données.
 # On interroge la route qui vérifie qu'elles sont chargées.
-JOUEURS="$(curl --silent --fail "${URL}/health" | python -c "import json,sys; print(json.load(sys.stdin)['players_loaded'])")"
+# Extraction sans dependance : `python` n'existe pas sur toutes les machines
+# (sur celle-ci l'interpreteur s'appelle `py`), et exiger jq ajouterait une
+# dependance pour lire un seul entier.
+SANTE="$(curl --silent --fail "${URL}/health")"
+JOUEURS="$(printf '%s' "${SANTE}" | tr ',' '
+' | grep -o '"players_loaded":[0-9]*' | grep -o '[0-9]*')"
 echo "    ${JOUEURS} joueurs chargés"
 
 if [[ "${JOUEURS}" -le 0 ]]; then
