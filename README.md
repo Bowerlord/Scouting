@@ -6,6 +6,13 @@
 > **Un outil de Machine Learning pour identifier les pépites esport dans les ligues mineures européennes de League of Legends.**
 
 ### 👉 [Tester le dashboard en ligne](https://scouting-lol-erl.streamlit.app/)
+### 🔌 [Interroger l'API](https://scouting-api-7750158787.europe-west1.run.app/docs)
+
+L'API est déployée sur **Google Cloud Run**, région `europe-west1`. Elle sert les mêmes résultats que le dashboard, en HTTP, à n'importe quel client :
+
+```bash
+curl https://scouting-api-7750158787.europe-west1.run.app/leaderboard?position=mid\&limit=3
+```
 
 Trois vues interactives : **Leaderboard** (classement des 3 098 joueurs par talent score), **Profil Joueur** (radar de performance et archétype ML) et **Scout Mode** (shortlist par critères et recherche de joueurs similaires par clustering).
 
@@ -347,6 +354,8 @@ Le dépôt contient un `.mcp.json` prêt à l'emploi. Exemple d'échange réel :
 > `Profil neutre` — 110 joueurs, 2,7 %
 
 ### Déployer sur Cloud Run
+
+> Déployé le 2026-09-07 sur `scouting-lol-507908`. Build en 1 min 7 s, service disponible en quelques secondes, 67 ms de temps de réponse total mesuré depuis un poste extérieur.
 
 ```bash
 ./deploy/cloud-run.sh <ID_DU_PROJET>
