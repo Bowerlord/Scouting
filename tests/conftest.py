@@ -62,3 +62,16 @@ def features_df(cleaned_df) -> pd.DataFrame:
     df = calculate_kill_participation(cleaned_df.copy())
     df = aggregate_player_stats(df)
     return add_zscores(df)
+
+
+@pytest.fixture(autouse=True)
+def _pas_de_reseau_pour_les_snapshots(monkeypatch):
+    """Coupe le rafraîchissement distant des snapshots pour toute la suite.
+
+    L'API va chercher les snapshots publiés au premier chargement. C'est le
+    comportement voulu en production, et exactement ce qu'il ne faut pas en
+    test : une suite qui dépend de GitHub échoue sans raison le jour où le
+    réseau tousse, et met dix secondes de plus le reste du temps. Les tests qui
+    visent ce chemin le réactivent eux-mêmes.
+    """
+    monkeypatch.setenv("SCOUTING_REFRESH_SNAPSHOTS", "0")

@@ -9,6 +9,7 @@ apporter. `reload()` existe pour les tests et pour un rechargement à chaud.
 from __future__ import annotations
 
 import json
+import logging
 import threading
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -17,7 +18,10 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from api.config import METRICS_DIR
+from api.config import METRICS_DIR, REFRESHED_METRICS_DIR
+from api.refresh import recuperer_snapshots
+
+logger = logging.getLogger(__name__)
 
 _LOCK = threading.Lock()
 _STORE: "DataStore | None" = None
@@ -99,13 +103,33 @@ def load(metrics_dir: Path | None = None) -> DataStore:
     )
 
 
+def _load_avec_rafraichissement() -> DataStore:
+    """Charge les snapshots publiés, avec repli sur ceux embarqués dans l'image.
+
+    L'image fige les données au jour de sa construction. Sans ce rafraîchissement,
+    l'API continue de servir les résultats de son dernier déploiement même quand
+    le dépôt a été mis à jour : constaté le 2026-09-07, sept semaines d'écart
+    entre le dashboard et l'API. Les fichiers de l'image restent le socle, et
+    toute défaillance de la source distante y ramène sans bruit.
+    """
+    frais = recuperer_snapshots(REFRESHED_METRICS_DIR)
+    if frais is not None:
+        try:
+            return load(frais)
+        except Exception as erreur:  # noqa: BLE001 - tout échec doit ramener au socle
+            logger.warning(
+                f"Snapshots récupérés mais inexploitables ({erreur}). Repli sur ceux embarqués dans l'image."
+            )
+    return load()
+
+
 def get_store() -> DataStore:
     """Renvoie le magasin de données, en le chargeant au premier appel."""
     global _STORE
     if _STORE is None:
         with _LOCK:
             if _STORE is None:
-                _STORE = load()
+                _STORE = _load_avec_rafraichissement()
     return _STORE
 
 
