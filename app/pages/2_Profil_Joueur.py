@@ -56,7 +56,6 @@ theme.entete(
     "Performances détaillées d'un joueur, exprimées en écarts-types par rapport "
     "aux autres joueurs de son poste dans sa ligue.",
 )
-st.markdown("Vue détaillée des métriques et de l'archétype ML d'un joueur.")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Chargement des données
