@@ -10,3 +10,9 @@ fastapi>=0.110
 uvicorn[standard]>=0.27
 pandas>=2.0
 numpy>=1.24
+
+# Pour aller chercher les snapshots publiés au démarrage (api/refresh.py).
+# Sans cette ligne, l'image se construit mais le conteneur meurt à l'import :
+# `ModuleNotFoundError: No module named 'requests'`. C'est le job CI « build +
+# démarrage réel » qui l'a attrapé, pas le build seul.
+requests>=2.31
