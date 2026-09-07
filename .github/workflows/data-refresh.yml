@@ -43,6 +43,11 @@ permissions:
   contents: write
   pull-requests: write
   issues: write
+  # Indispensable à la fédération d'identité : c'est cette permission qui
+  # autorise le job à demander un jeton OIDC à GitHub, que Google échange
+  # ensuite contre un accès. Sans elle, l'étape d'authentification échoue
+  # avec un message qui parle de « credentials » et non de permissions.
+  id-token: write
 
 jobs:
   refresh:
@@ -65,8 +70,27 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Authentification Google (sans clé, par fédération OIDC)
+        # Aucune clé n'est stockée nulle part : GitHub prouve son identité à
+        # Google, qui délivre un jeton court. La politique du projet interdit
+        # de toute façon la création de clés de compte de service.
+        # Le fournisseur n'accepte que le dépôt Bowerlord/Scouting.
+        id: gauth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.WIF_SERVICE_ACCOUNT }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/drive.readonly
+
       - name: Téléchargement des données
         id: download
+        env:
+          # Sans ces deux variables, le downloader garde la voie anonyme.
+          # C'est ce qui permet à un clone du dépôt de fonctionner sans compte
+          # Google, et au workflow de continuer à tourner si l'auth échoue.
+          GOOGLE_DRIVE_ACCESS_TOKEN: ${{ steps.gauth.outputs.access_token }}
+          GOOGLE_CLOUD_PROJECT: ${{ vars.GOOGLE_CLOUD_PROJECT }}
         run: |
           set +e
           python -m src.data.downloader
