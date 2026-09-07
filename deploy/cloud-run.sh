@@ -37,11 +37,23 @@ echo "==> Image    : ${IMAGE}"
 echo
 
 echo "==> Activation des API nécessaires"
+# compute.googleapis.com n'est pas evidente et son absence coute cher :
+# Cloud Build s'execute sous le compte de service Compute Engine du projet,
+# et ce compte n'existe qu'une fois cette API activee. Sans elle, le build
+# echoue sur un PERMISSION_DENIED qui accuse a tort le compte utilisateur.
+# Constate en reel le 2026-09-07, sur un compte pourtant proprietaire.
 gcloud services enable \
   run.googleapis.com \
   artifactregistry.googleapis.com \
   cloudbuild.googleapis.com \
+  compute.googleapis.com \
   --project "${PROJET}"
+
+# L'activation rend la main avant que les comptes de service et leurs droits
+# soient propages. Sans cette pause, le premier essai echoue et le second
+# reussit, ce qui fait passer le script pour instable alors que c'est une course.
+echo "==> Attente de la propagation des permissions (60 s)"
+sleep 60
 
 echo "==> Création du dépôt d'images (ignorée s'il existe déjà)"
 gcloud artifacts repositories create "${DEPOT}" \
