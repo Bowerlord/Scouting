@@ -1,0 +1,31 @@
+# Image du dashboard Streamlit.
+#
+# Séparée de celle de l'API : les deux services n'ont ni les mêmes dépendances,
+# ni le même rythme de déploiement, ni les mêmes besoins en ressources. Les
+# empaqueter ensemble obligerait à redéployer l'API pour un changement de
+# couleur dans un graphique.
+
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+RUN useradd --create-home --uid 1000 scouting
+
+WORKDIR /app
+
+COPY requirements-dashboard.txt .
+RUN pip install --no-cache-dir -r requirements-dashboard.txt
+
+COPY app/ ./app/
+COPY reports/metrics/ ./reports/metrics/
+COPY .streamlit/ ./.streamlit/
+
+USER scouting
+
+EXPOSE 8501
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+    CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8501/_stcore/health', timeout=4).status == 200 else 1)"
+
+CMD ["streamlit", "run", "app/app.py", "--server.port=8501", "--server.address=0.0.0.0", "--server.headless=true"]

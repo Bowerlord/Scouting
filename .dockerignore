@@ -1,0 +1,23 @@
+# Tout ce qui n'a rien à faire dans l'image.
+.git
+.github
+.venv
+venv
+__pycache__
+*.pyc
+.pytest_cache
+.ruff_cache
+.claude
+notebooks
+docs
+logs
+reports/figures
+data/raw
+data/interim
+data/processed
+models
+*.pkl
+*.ipynb
+.env
+.env.*
+!.env.example

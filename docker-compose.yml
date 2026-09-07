@@ -1,0 +1,37 @@
+# Lance l'API et le dashboard ensemble, le dashboard consommant l'API.
+#
+#   docker compose up --build
+#   API        : http://localhost:8000/docs
+#   Dashboard  : http://localhost:8501
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      SCOUTING_METRICS_DIR: /app/reports/metrics
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=4).status == 200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.dashboard
+    ports:
+      - "8501:8501"
+    environment:
+      SCOUTING_API_URL: http://api:8000
+    depends_on:
+      api:
+        # Le dashboard attend que l'API soit réellement saine, pas seulement
+        # démarrée : sinon il affiche une page d'erreur au premier chargement.
+        condition: service_healthy
+    restart: unless-stopped

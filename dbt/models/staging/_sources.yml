@@ -1,0 +1,20 @@
+version: 2
+
+sources:
+  - name: pipeline
+    description: >
+      Les fichiers de résultats produits par le pipeline ML Python. Ce sont
+      les seules entrées de dbt : dbt ne recalcule aucun modèle, il contrôle
+      et met en forme ce que le pipeline a produit.
+    meta:
+      owner: "pipeline ML (src/)"
+      refreshed_by: ".github/workflows/data-refresh.yml"
+    tables:
+      - name: talent_scores
+        description: Un score de talent par joueur, saison, split et équipe.
+        meta:
+          external_location: "read_csv_auto('{{ env_var('DBT_METRICS_DIR', '../reports/metrics') }}/talent_scores_players.csv')"
+      - name: clustering
+        description: Archétype de jeu et coordonnées UMAP, mêmes clés que les scores.
+        meta:
+          external_location: "read_csv_auto('{{ env_var('DBT_METRICS_DIR', '../reports/metrics') }}/clustering_results.csv')"

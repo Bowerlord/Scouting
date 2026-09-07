@@ -87,3 +87,25 @@ lint:
 format:
 	@echo "✨ Formatage du code..."
 	$(PYTHON) -m black src/ tests/
+
+# ── API, dbt et conteneurs ───────────────────────────────────────────────────
+
+api:  ## Lance l'API en développement, avec rechargement automatique
+	uvicorn api.main:app --reload --port 8000
+
+api-test:  ## Lance uniquement les tests de l'API
+	pytest tests/test_api.py -v
+
+dbt-build:  ## Construit les modèles dbt et lance leurs tests de qualité
+	cd dbt && DBT_PROFILES_DIR=. DBT_METRICS_DIR=../reports/metrics dbt build
+
+dbt-docs:  ## Génère et sert la documentation des modèles dbt
+	cd dbt && DBT_PROFILES_DIR=. DBT_METRICS_DIR=../reports/metrics dbt docs generate && dbt docs serve
+
+docker-build:  ## Construit l'image de l'API
+	docker build -t scouting-api .
+
+docker-up:  ## Lance l'API et le dashboard ensemble
+	docker compose up --build
+
+.PHONY: api api-test dbt-build dbt-docs docker-build docker-up
