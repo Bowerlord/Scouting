@@ -1,19 +1,26 @@
-# Thème du dashboard ERL Scout.
+# Thème d'ERL Scout.
 #
-# Refondu le 2026-09-07. L'ancien thème combinait un fond slate-900 et un bleu
-# #3b82f6 : la palette par défaut de Tailwind, c'est-à-dire exactement ce à quoi
-# ressemble une interface que personne n'a stylée.
+# Refondu le 2026-09-07, direction « liste de surveillance ».
 #
-# Le parti pris : un noir neutre plutôt que bleuté, et un seul accent ambre.
-# L'ambre évoque la distinction et le classement, ce qui est le sujet de l'outil,
-# et il ne ressemble à aucun tableau de bord générique.
+# Deux rendus ont été écartés parce que ce sont des réflexes et non des choix :
+# le fond crème avec serif contrastée, et le noir pur avec accent acide. Le
+# premier jet de la journée était le second, et il ressemblait à tout.
+#
+# Ici, un gris froid de salle de régie, ni noir ni bleuté, et un seul accent
+# orange brûlé qui n'apparaît qu'à un endroit : le marqueur de promotion en LEC.
+# Le reste de la hiérarchie se fait par la valeur et la position, pas par la
+# couleur.
 
 [theme]
 base = "dark"
-primaryColor = "#E0A82E"              # Ambre : le seul accent, réservé aux valeurs qui comptent
-backgroundColor = "#0D0D0F"           # Noir neutre, sans dominante bleue
-secondaryBackgroundColor = "#17171A"  # Surfaces et panneaux
-textColor = "#E8E6E3"                 # Blanc cassé, moins agressif qu'un blanc pur
+# primaryColor peint TOUS les widgets Streamlit : curseurs, cases, etiquettes.
+# Y mettre la couleur d'accent la repandait partout, alors qu'elle doit
+# signaler une seule chose. On met donc un gris neutre ici, et l'accent
+# n'apparait que la ou le CSS du projet le place : le marqueur de promotion.
+primaryColor = "#AEB6C2"
+backgroundColor = "#14161A"
+secondaryBackgroundColor = "#1B1E23"
+textColor = "#DDE1E6"
 font = "sans serif"
 
 [server]

@@ -1,22 +1,16 @@
 """
-app.py — Point d'entrée principal du ERL Scout
+app.py — La liste de surveillance d'ERL Scout.
 
-Cette page d'accueil présente :
-  - Un titre et une description de l'outil
-  - Les métriques globales du dataset (joueurs analysés, ligues, promus en LEC)
-  - Un guide de navigation vers les trois pages principales
+Refondue le 2026-09-07. La version précédente présentait l'outil : un titre,
+quatre métriques sur le jeu de données et trois colonnes de texte décrivant les
+pages. Un scout qui ouvre l'application veut voir des joueurs, pas lire ce que
+fait l'application.
 
-Pourquoi Streamlit ?
-  → Interface web interactive sans JavaScript, idéale pour des dashboards ML internes.
-    Le re-render automatique à chaque widget simplifie le code au prix d'une
-    re-exécution complète du script à chaque interaction — d'où l'importance
-    du @st.cache_data dans utils/data_loader.py.
+La structure est donc celle du métier, pas celle du logiciel : cinq blocs, un
+par poste. Personne ne cherche « un joueur », on cherche un jungler.
 
 Lancement :
   streamlit run app/app.py        (depuis la racine du projet)
-
-Intégration :
-  app.py → utils/data_loader.py → reports/metrics/talent_scores_players.csv
 """
 
 import sys
@@ -27,178 +21,119 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 import streamlit as st
-from utils.data_loader import load_model_metrics, load_refresh_metadata, load_talent_scores
+from utils.data_loader import load_refresh_metadata, load_talent_scores
 
 from utils import theme
 
-# ══════════════════════════════════════════════════════════════════════════════
-# Configuration de la page
-# ══════════════════════════════════════════════════════════════════════════════
-
 st.set_page_config(
     page_title="ERL Scout",
-    page_icon="🎯",
+    page_icon="◆",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# ══════════════════════════════════════════════════════════════════════════════
-# En-tête
-# ══════════════════════════════════════════════════════════════════════════════
-
 theme.appliquer()
 
-theme.entete(
-    "Détection de talents · League of Legends",
-    "ERL Scout",
-    "Identifie les joueurs des ligues régionales européennes qui ont le profil pour "
-    "passer en LEC, à partir des données de matchs Oracle's Elixir et d'un modèle "
-    "entraîné sur les promotions observées.",
-)
-
 # ══════════════════════════════════════════════════════════════════════════════
-# Métriques globales du dataset
+# Données
 # ══════════════════════════════════════════════════════════════════════════════
 
 try:
     df = load_talent_scores()
-
-    col1, col2, col3, col4 = st.columns(4)
-
-    with col1:
-        # len(df) compte des lignes joueur/split ; on affiche les deux niveaux
-        st.metric(
-            label="Joueurs",
-            value=f"{df['playername'].nunique():,}",
-            help=f"{len(df):,} lignes joueur × split au total.",
-        )
-
-    with col2:
-        st.metric(
-            label="Ligues",
-            value=df["league"].nunique(),
-        )
-
-    with col3:
-        n_promoted = df.loc[df["promoted_to_lec"], "playername"].nunique()
-        st.metric(
-            label="Promus en LEC",
-            value=int(n_promoted),
-            help="Joueurs uniques dont la promotion en LEC est observée dans les données.",
-        )
-
-    with col4:
-        years = sorted(df["_source_year"].dropna().unique().astype(int).tolist())
-        # Une plage bornee tient sur une carte, la liste complete non : elle
-        # etait tronquee par des points de suspension. Constate au rendu.
-        etendue = f"{years[0]}–{years[-1]}" if len(years) > 1 else str(years[0])
-        st.metric(
-            label="Saisons",
-            value=etendue,
-            help=" · ".join(str(y) for y in years),
-        )
-
-except FileNotFoundError as e:
-    st.error(str(e))
-    st.info(
-        "L'application est prête. Lancez le pipeline ML pour générer les données, "
-        "puis relancez Streamlit."
-    )
+except FileNotFoundError as erreur:
+    st.error(str(erreur))
+    st.info("Lancez le pipeline pour générer les résultats, puis relancez l'application.")
     st.stop()
 
-# ══════════════════════════════════════════════════════════════════════════════
-# Guide de navigation
-# ══════════════════════════════════════════════════════════════════════════════
+meta = load_refresh_metadata()
+saisons = sorted(df["_source_year"].dropna().unique().astype(int).tolist())
 
-st.divider()
-st.subheader("Explorer l'outil")
-
-col_a, col_b, col_c = st.columns(3)
-
-with col_a:
-    st.markdown(
-        """
-        ### Leaderboard
-        Classement de tous les joueurs par **talent score**.
-
-        - Filtres : position, ligue, année, score minimum
-        - Tableau interactif avec indicateur de promotion LEC
-        - Bar chart top 20 coloré par ligue
-        """
-    )
-
-with col_b:
-    st.markdown(
-        """
-        ### Profil Joueur
-        Vue détaillée d'un joueur individuel.
-
-        - Radar chart multi-dimensionnel des z-scores
-        - Métriques : talent score, win rate, games played, champion pool
-        - Archétype de jeu issu du clustering K-Means
-        """
-    )
-
-with col_c:
-    st.markdown(
-        """
-        ### Scout Mode
-        Scouting avancé par critères et par similarité.
-
-        - Shortlist filtrée par position, archétype, ligue, score
-        - Recherche de joueurs similaires par clustering ML
-        - Scatter plot comparatif des z-scores dans le cluster
-        """
-    )
+theme.entete(
+    f"Ligues régionales européennes · {saisons[0]}\u2013{saisons[-1]}",
+    "Liste de surveillance",
+    "Les joueurs dont le profil se rapproche le plus de ceux qui sont réellement "
+    "montés en LEC. Le score est une position relative, pas une note : un joueur "
+    "à 90 n'est pas deux fois meilleur qu'un joueur à 45.",
+)
 
 # ══════════════════════════════════════════════════════════════════════════════
-# Sidebar — informations sur le modèle
+# Filtres
 # ══════════════════════════════════════════════════════════════════════════════
 
 with st.sidebar:
-    st.markdown("### À propos du modèle")
+    st.markdown('<div class="es-kicker">Filtres</div>', unsafe_allow_html=True)
 
-    # Chiffres lus depuis talent_score_results.json (généré par le pipeline)
-    # pour rester exacts après chaque ré-entraînement.
-    metrics = load_model_metrics()
-    best_model = metrics.get("best_model", "N/A")
-    comparison = metrics.get("comparison", [])
-    best_pr_auc = next(
-        (m.get("pr_auc") for m in comparison if m.get("model_name") == best_model),
-        None,
-    )
-    pr_auc_label = f"(PR-AUC : {best_pr_auc:.3f})" if best_pr_auc is not None else ""
-    train_years = metrics.get("train_years", [])
-    test_years = metrics.get("test_years", [])
-    split_label = (
-        f"entraîné {'/'.join(map(str, train_years))} → testé {'/'.join(map(str, test_years))}"
-        if train_years and test_years
-        else "split temporel Out-of-Time"
+    saison = st.selectbox(
+        "Saison",
+        options=["Toutes"] + [str(a) for a in reversed(saisons)],
+        index=1 if len(saisons) > 1 else 0,
     )
 
-    st.markdown(
-        f"""
-        **Pipeline ML** entraîné sur Oracle's Elixir.
+    ligues = sorted(df["league"].dropna().unique().tolist())
+    ligue = st.multiselect("Ligue", options=ligues, default=ligues)
 
-        - **Meilleur modèle** : {best_model} {pr_auc_label}
-        - **Calibration** : probabilités calibrées (Platt)
-        - **Clustering** : K-Means par position
-        - **Features** : z-scores DPM, CSPM, Gold@15, XP@15...
-        - **Split temporel** : {split_label}
-        """
-    )
-    st.markdown("---")
+    # Le seuil par defaut n'est pas cosmetique : en dessous de dix matchs, la
+    # tete de liste est occupee par des joueurs a trois parties dont le score
+    # n'a aucune valeur predictive.
+    min_matchs = st.slider("Matchs minimum", min_value=0, max_value=40, value=10, step=1)
 
-    # Indicateur de fraîcheur des snapshots (absent → omis silencieusement)
-    refresh_meta = load_refresh_metadata()
-    if refresh_meta.get("data_max_date"):
-        generated_label = (
-            f" (pipeline exécuté le {refresh_meta['generated_at']})"
-            if refresh_meta.get("generated_at")
-            else ""
+    par_poste = st.slider("Joueurs par poste", min_value=3, max_value=15, value=6, step=1)
+
+filtre = df.copy()
+if saison != "Toutes":
+    filtre = filtre[filtre["_source_year"] == int(saison)]
+if ligue:
+    filtre = filtre[filtre["league"].isin(ligue)]
+filtre = filtre[filtre["games_played"] >= min_matchs]
+
+# ══════════════════════════════════════════════════════════════════════════════
+# La liste, poste par poste
+# ══════════════════════════════════════════════════════════════════════════════
+
+if filtre.empty:
+    st.warning("Aucun joueur ne correspond à ces filtres. Élargissez la saison ou baissez le seuil de matchs.")
+    st.stop()
+
+st.write("")
+st.markdown(
+    '<div class="es-legende">Écart au niveau moyen de la ligue · '
+    "différentiel d'or à 15 minutes</div>",
+    unsafe_allow_html=True,
+)
+
+for code, libelle in theme.POSTES:
+    bloc = filtre[filtre["position"] == code]
+    if bloc.empty:
+        continue
+
+    meilleurs = bloc.nlargest(par_poste, "talent_score")
+    lignes = [theme.entete_poste(libelle, len(bloc))]
+
+    for rang, (_, joueur) in enumerate(meilleurs.iterrows(), start=1):
+        z = joueur.get("golddiffat15_zscore")
+        lignes.append(
+            theme.ligne_joueur(
+                rang=rang,
+                nom=str(joueur.get("playername_original") or joueur["playername"]),
+                club=f"{joueur['teamname']} · {joueur['league']}",
+                score=float(joueur["talent_score"]),
+                z=None if z is None or z != z else float(z),
+                promu=bool(joueur.get("promoted_to_lec", False)),
+            )
         )
-        st.caption(
-            f"📅 Données à jour du {refresh_meta['data_max_date']}{generated_label}"
-        )
 
-    st.caption("ERL Scout")
+    st.markdown("".join(lignes), unsafe_allow_html=True)
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Pied de page
+# ══════════════════════════════════════════════════════════════════════════════
+
+st.write("")# `data_max_date` est la date du dernier match du jeu de donnees, et non celle
+# de generation du fichier : c'est elle qui dit jusqu'ou vont les resultats,
+# donc la seule qui interesse quelqu'un qui lit un classement.
+derniere = meta.get("data_max_date") if meta else None
+pied = f"Oracle's Elixir · {len(filtre):,} joueurs-saisons affiches"
+if derniere:
+    pied += f" · donnees jusqu'au {derniere}"
+
+st.markdown(f'<div class="es-legende">{pied}</div>', unsafe_allow_html=True)
