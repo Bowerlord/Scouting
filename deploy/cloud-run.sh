@@ -25,7 +25,20 @@ DEPOT="${DEPOT:-scouting}"
 
 if [[ -z "${PROJET}" ]]; then
   echo "Usage : $0 <ID_DU_PROJET>" >&2
-  echo "Exemple : $0 scouting-lol-472103" >&2
+  echo "L'ID se lit sur https://console.cloud.google.com/billing, onglet" >&2
+  echo "« Vos projets », colonne Identifiant. Ce n'est pas le nom du projet." >&2
+  exit 1
+fi
+
+# Un ID de projet inexistant fait echouer le deploiement sur
+# UREQ_PROJECT_BILLING_NOT_FOUND, qui accuse a tort la facturation. Constate en
+# reel le 2026-09-08 : une soiree perdue a chercher une carte bancaire alors que
+# la commande visait un projet qui n'existait pas. On verifie donc avant.
+if ! gcloud projects describe "${PROJET}" >/dev/null 2>&1; then
+  echo "Le projet « ${PROJET} » est introuvable, ou le compte connecte n'y a pas acces." >&2
+  echo "Verifiez l'ID exact, puis « gcloud auth list » pour le compte actif." >&2
+  echo "Sans cette verification, Google repondrait UREQ_PROJECT_BILLING_NOT_FOUND," >&2
+  echo "ce qui laisse croire a tort a un probleme de facturation." >&2
   exit 1
 fi
 
