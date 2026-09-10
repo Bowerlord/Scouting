@@ -1,12 +1,12 @@
 {
-  "horodatage": "2026-09-10T11:11:58+00:00",
+  "horodatage": "2026-09-10T14:49:08+00:00",
   "fournisseur": "heuristique",
   "modele": "heuristique-v1",
   "passes": 5,
   "questions": 40,
   "reponses": 200,
   "rejeux_manquants": 0,
-  "duree_s": 8.4,
+  "duree_s": 9.5,
   "exactitude": 0.775,
   "par_famille": {
     "factuelle": {
@@ -39,8 +39,8 @@
   "refus_correct": 0.9166666666666666,
   "instabilite_verdict": 0.0,
   "instabilite_reponse": 0.0,
-  "latence_p50_ms": 4.7,
-  "latence_p95_ms": 6.7,
+  "latence_p50_ms": 4.4,
+  "latence_p95_ms": 7.1,
   "cout_total_eur": 0.0,
   "cout_par_question_eur": 0.0,
   "jetons": {
@@ -96,7 +96,7 @@
       "id": "C04",
       "famille": "comparative",
       "question": "Quel poste compte le plus de lignes joueur dans les données ?",
-      "attendu": "bot",
+      "attendu": "jng",
       "verdict": "faux",
       "taux_reussite": 0.0,
       "reponse": "zoelys (LFL, sup), score de talent 99.7805338307476, 71 matchs joués.",

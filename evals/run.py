@@ -138,7 +138,12 @@ def summarize(
     all_answers = [a for o in outcomes for a in o.answers]
 
     latencies = [a.latency_ms for a in all_answers]
-    total_cost = sum(a.cost_eur() for a in all_answers)
+    # Un modèle dont le tarif n'est pas renseigné n'a pas un coût nul, il a un
+    # coût inconnu. Additionner en traitant None comme zéro publierait un total
+    # faux, ce qu'un banc de mesure ne doit jamais faire.
+    couts = [a.cost_eur() for a in all_answers]
+    tarif_connu = all(cout is not None for cout in couts)
+    total_cost = sum(cout for cout in couts if cout is not None) if tarif_connu else None
     tool_calls = [len(a.trace) for a in all_answers]
     tool_names = Counter(name for a in all_answers for name in a.tool_names)
     tool_errors = sum(1 for a in all_answers for call in a.trace if call.is_error)
@@ -183,8 +188,10 @@ def summarize(
         ),
         "latence_p50_ms": round(percentile(latencies, 0.50), 1),
         "latence_p95_ms": round(percentile(latencies, 0.95), 1),
-        "cout_total_eur": round(total_cost, 4),
-        "cout_par_question_eur": round(total_cost / max(len(all_answers), 1), 6),
+        "cout_total_eur": None if total_cost is None else round(total_cost, 4),
+        "cout_par_question_eur": (
+            None if total_cost is None else round(total_cost / max(len(all_answers), 1), 6)
+        ),
         "jetons": {
             "entree": sum(a.usage.input_tokens for a in all_answers),
             "sortie": sum(a.usage.output_tokens for a in all_answers),
@@ -286,8 +293,14 @@ def render_report(summary: dict[str, Any], previous: dict[str, Any] | None) -> s
     add(f"| Instabilité des chiffres cités | {_pct(summary['instabilite_reponse'])} | {ecart} |")
     add(f"| Latence p50 | {summary['latence_p50_ms']:.0f} ms | — |")
     add(f"| Latence p95 | {summary['latence_p95_ms']:.0f} ms | — |")
-    add(f"| Coût par question | {summary['cout_par_question_eur']:.5f} € | — |")
-    add(f"| Coût total de l'exécution | {summary['cout_total_eur']:.4f} € | — |")
+    cout_question = summary["cout_par_question_eur"]
+    cout_total = summary["cout_total_eur"]
+    if cout_question is None:
+        add(f"| Coût par question | non chiffré — tarif de `{summary['modele']}` non relevé | — |")
+        add("| Coût total de l'exécution | non chiffré | — |")
+    else:
+        add(f"| Coût par question | {cout_question:.5f} € | — |")
+        add(f"| Coût total de l'exécution | {cout_total:.4f} € | — |")
     add(f"| Appels d'outils par question | {summary['outils_par_question']} | — |")
     add(f"| Appels d'outils en erreur | {summary['erreurs_outil']} | — |")
     add("")
