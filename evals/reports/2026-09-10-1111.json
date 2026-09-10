@@ -1,0 +1,170 @@
+{
+  "horodatage": "2026-09-10T11:11:58+00:00",
+  "fournisseur": "heuristique",
+  "modele": "heuristique-v1",
+  "passes": 5,
+  "questions": 40,
+  "reponses": 200,
+  "rejeux_manquants": 0,
+  "duree_s": 8.4,
+  "exactitude": 0.775,
+  "par_famille": {
+    "factuelle": {
+      "questions": 16,
+      "exactitude": 1.0,
+      "verdicts": {
+        "juste": 80
+      }
+    },
+    "comparative": {
+      "questions": 12,
+      "exactitude": 0.3333333333333333,
+      "verdicts": {
+        "refus_a_tort": 5,
+        "faux": 35,
+        "juste": 20
+      }
+    },
+    "piege": {
+      "questions": 12,
+      "exactitude": 0.9166666666666666,
+      "verdicts": {
+        "refus_attendu": 55,
+        "hallucination": 5
+      }
+    }
+  },
+  "refus_a_tort": 0.025,
+  "hallucinations": 0.025,
+  "refus_correct": 0.9166666666666666,
+  "instabilite_verdict": 0.0,
+  "instabilite_reponse": 0.0,
+  "latence_p50_ms": 4.7,
+  "latence_p95_ms": 6.7,
+  "cout_total_eur": 0.0,
+  "cout_par_question_eur": 0.0,
+  "jetons": {
+    "entree": 0,
+    "sortie": 0
+  },
+  "outils_par_question": 0.72,
+  "outils_utilises": {
+    "get_leaderboard": 105,
+    "search_players": 20,
+    "list_filters": 15,
+    "get_archetypes": 5
+  },
+  "erreurs_outil": 0,
+  "echecs": [
+    {
+      "id": "C01",
+      "famille": "comparative",
+      "question": "Entre la LFL et la LFL2, laquelle compte le plus de lignes joueur en 2026 ?",
+      "attendu": "LFL",
+      "verdict": "refus_a_tort",
+      "taux_reussite": 0.0,
+      "reponse": "DONNEES_INSUFFISANTES Aucun résultat pour ce filtre.",
+      "outils": [
+        "get_leaderboard"
+      ]
+    },
+    {
+      "id": "C02",
+      "famille": "comparative",
+      "question": "Quelle ligue compte le plus de lignes joueur, toutes saisons confondues ?",
+      "attendu": "PRM",
+      "verdict": "faux",
+      "taux_reussite": 0.0,
+      "reponse": "zoelys (LFL, sup), score de talent 99.7805338307476, 71 matchs joués.",
+      "outils": [
+        "get_leaderboard"
+      ]
+    },
+    {
+      "id": "C03",
+      "famille": "comparative",
+      "question": "Quelle saison compte le plus de lignes joueur ?",
+      "attendu": 2025.0,
+      "verdict": "faux",
+      "taux_reussite": 0.0,
+      "reponse": "zoelys (LFL, sup), score de talent 99.7805338307476, 71 matchs joués.",
+      "outils": [
+        "get_leaderboard"
+      ]
+    },
+    {
+      "id": "C04",
+      "famille": "comparative",
+      "question": "Quel poste compte le plus de lignes joueur dans les données ?",
+      "attendu": "bot",
+      "verdict": "faux",
+      "taux_reussite": 0.0,
+      "reponse": "zoelys (LFL, sup), score de talent 99.7805338307476, 71 matchs joués.",
+      "outils": [
+        "get_leaderboard"
+      ]
+    },
+    {
+      "id": "C05",
+      "famille": "comparative",
+      "question": "Entre la LFL et la PRM, laquelle compte le plus de lignes joueur sur la saison 2025 ?",
+      "attendu": "PRM",
+      "verdict": "faux",
+      "taux_reussite": 0.0,
+      "reponse": "slowq (LFL, mid), score de talent 69.74759869455227, 36 matchs joués.",
+      "outils": [
+        "get_leaderboard"
+      ]
+    },
+    {
+      "id": "C08",
+      "famille": "comparative",
+      "question": "Entre la NLC et la TCL, laquelle a le meilleur score de talent maximum en ne gardant que les joueurs à 10 matchs ou plus ?",
+      "attendu": "TCL",
+      "verdict": "faux",
+      "taux_reussite": 0.0,
+      "reponse": "jinjo (NLC, bot), score de talent 27.68999374625561, 22 matchs joués.",
+      "outils": [
+        "get_leaderboard"
+      ]
+    },
+    {
+      "id": "C09",
+      "famille": "comparative",
+      "question": "Quelle ligue compte le plus de lignes joueur avec au moins 10 matchs joués ?",
+      "attendu": "PRM",
+      "verdict": "faux",
+      "taux_reussite": 0.0,
+      "reponse": "zoelys (LFL, sup), score de talent 99.7805338307476, 71 matchs joués.",
+      "outils": [
+        "get_leaderboard"
+      ]
+    },
+    {
+      "id": "C11",
+      "famille": "comparative",
+      "question": "Entre 2024 et 2025, quelle saison compte le plus de lignes joueur ?",
+      "attendu": 2025.0,
+      "verdict": "faux",
+      "taux_reussite": 0.0,
+      "reponse": "zoelys (LFL, sup), score de talent 99.7805338307476, 71 matchs joués.",
+      "outils": [
+        "get_leaderboard"
+      ]
+    },
+    {
+      "id": "P12",
+      "famille": "piege",
+      "question": "Dans quelle équipe le joueur zoelys jouera-t-il la saison prochaine ?",
+      "attendu": "refus",
+      "verdict": "hallucination",
+      "taux_reussite": 0.0,
+      "reponse": "zoelys (LFL, sup), score de talent 99.7805338307476, 71 matchs joués.",
+      "outils": [
+        "get_leaderboard"
+      ]
+    }
+  ],
+  "instables": [],
+  "_reponses_attendues": 28
+}
