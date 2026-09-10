@@ -383,6 +383,135 @@ Le lint et les tests couvrent `src/`, `api/` et `mcp_server/`.
 
 Le job Docker ne se contente pas de construire l'image : un build qui réussit ne prouve pas que le conteneur démarre.
 
+## 🤖 Phase 9 — L'agent, et surtout son banc d'évaluation
+
+> Un agent qui répond en langage naturel sur ces données, et un banc qui mesure
+> à quelle fréquence il se trompe, sur quoi, et pour combien d'euros.
+
+**Ce qui compte ici n'est pas l'agent.** Un agent qui interroge une API, tout le
+monde en écrit un. Ce qui est rare, et ce que ce dossier contient, c'est de
+pouvoir dire : *« il se trompe dans 22,5 % des cas, voilà exactement lesquels,
+et voilà pourquoi »*.
+
+### Les chiffres
+
+*40 questions × 5 passes, dernière exécution du 10 septembre 2026.
+Rapport complet et versionné dans [`evals/reports/`](evals/reports/).*
+
+| Mesure | Référence déterministe |
+|---|---|
+| **Exactitude globale** | 77,5 % |
+| Exactitude — questions factuelles (16) | 100 % |
+| Exactitude — questions comparatives (12) | 33,3 % |
+| Exactitude — questions pièges (12) | 91,7 % |
+| **Refus à tort** | 2,5 % |
+| **Hallucinations** | 2,5 % |
+| Instabilité du verdict entre passes | 0 % |
+| Latence p50 / p95 | 5 ms / 7 ms |
+| Coût par question | 0 € |
+
+> ⚠️ **Ces chiffres sont ceux de la référence déterministe, pas d'un modèle de
+> langage.** La référence est un routeur à mots-clés écrit à la main
+> (`agent/baseline.py`), présent pour que le banc tourne en intégration continue
+> sans clé d'API. Elle donne le plancher : un modèle qui ne fait pas mieux que
+> 33 % sur les comparatives ne justifie pas son coût. **Les chiffres d'un vrai
+> modèle restent à mesurer**, avec une seule commande :
+>
+> ```bash
+> ANTHROPIC_API_KEY=... python -m evals.run --runs 5 --provider anthropic
+> ```
+
+### Ce que la référence rate, et c'est instructif
+
+Elle est parfaite sur les questions factuelles et s'effondre sur les
+comparatives (33 %). La cause est nette dans la trace : une comparaison demande
+**deux appels d'outils puis une mise en regard**, quand un routeur à mots-clés
+n'en fait qu'un. C'est précisément l'écart qu'un modèle doit combler, et le banc
+donne le chiffre exact à battre.
+
+Elle produit aussi **une hallucination sur 40** : à la question « combien de
+joueurs au total ont été promus en LEC ? », elle répond un nombre de lignes.
+Aucun des sept outils n'expose ce total. Le piège est dans le jeu de référence
+exactement pour attraper ce comportement.
+
+### Comment c'est construit
+
+```
+agent/
+├── tools.py       # les 7 outils appelables — pas de text-to-SQL libre
+├── prompts.py     # le prompt système, et le marqueur de refus explicite
+├── providers.py   # Anthropic, OpenAI, et le mode rejeu enregistré
+├── baseline.py    # la référence déterministe, pour la CI
+└── agent.py       # la boucle d'appel d'outils, tracée et chiffrée
+
+evals/
+├── questions.yaml # 40 questions, 3 familles, avec leur SQL de vérité
+├── truth.py       # la vérité terrain, calculée en SQL par DuckDB
+├── scoring.py     # exactitude, refus à tort, hallucination, variance
+├── run.py         # `python -m evals.run` → rapport Markdown
+└── reports/       # les rapports, versionnés, pour lire les écarts
+```
+
+**Quatre décisions qui portent tout le reste :**
+
+1. **Pas de text-to-SQL.** L'agent ne peut appeler que les sept routes déjà
+   exposées par l'API et le serveur MCP. Une réponse fausse vient donc soit d'un
+   mauvais choix d'outil, soit d'une mauvaise lecture du résultat — jamais d'une
+   requête inventée. Le diagnostic reste possible.
+
+2. **La vérité terrain est calculée par un chemin indépendant.** L'agent lit les
+   données par l'API ; les réponses attendues sont calculées en SQL avec DuckDB,
+   directement sur les fichiers du pipeline. Aucune ligne de code partagée. Un
+   banc qui se vérifie lui-même ne vérifie rien.
+
+3. **Un refus est une réponse.** Douze des quarante questions n'ont pas de
+   réponse dans les données : ligue non couverte, saison absente, attribut
+   inexistant. La bonne réponse est un refus explicite. Sans ces questions, un
+   agent qui invente proprement obtiendrait un excellent score.
+
+4. **Le refus à tort est publié à côté de l'exactitude.** Un agent qui
+   répondrait « données insuffisantes » à tout obtiendrait 100 % sur les pièges.
+   Les deux chiffres se lisent ensemble, ou pas du tout.
+
+### La non-régression
+
+Chaque exécution écrit un rapport horodaté et **le compare au précédent**, écart
+en points à l'appui. Un changement de prompt ou de modèle se juge sur cet écart,
+pas à l'impression.
+
+L'exemple vient de la première journée : corriger deux bugs de la référence a
+donné, dans le même rapport, `factuelle +12,5 pt ✅`, `comparative +8,3 pt ✅`,
+`refus à tort −10 pt ✅` **et** `pièges −8,3 pt ⚠️`. Le gain avait un coût, et
+sans le tableau d'écarts personne ne l'aurait vu.
+
+Le premier de ces bugs mérite d'être raconté : le mot « ans » était cherché en
+simple sous-chaîne pour détecter les questions sur l'âge, et il se trouve dans
+« dans les données ». Trois questions parfaitement légitimes étaient refusées.
+Aucune relecture ne l'avait vu ; le banc l'a sorti à sa première exécution.
+
+### L'utiliser
+
+```bash
+# Une question, en direct
+python -m agent "quels sont les cinq meilleurs joueurs avec au moins 10 matchs ?"
+
+# Le banc, sans clé et sans coût
+make evals
+
+# Le banc contre un vrai modèle, et enregistrement pour le rejeu
+ANTHROPIC_API_KEY=... make evals-record
+
+# La vérité terrain de chaque question, pour la relire
+make truth
+```
+
+La CI exécute le banc à chaque *pull request* et échoue si l'exactitude passe
+sous 75,5 %. Sans clé d'API : c'est la raison d'être de la référence
+déterministe. Un banc d'évaluation qui exige une clé payante ne tourne jamais,
+donc ne protège de rien.
+
+---
+
 ## 📊 Données
 
 Les données proviennent de deux sources principales :

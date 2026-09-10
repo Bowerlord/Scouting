@@ -1,5 +1,5 @@
 # ══════════════════════════════════════════════════════════════════════════════
-# KCorp Scouting Tool — Makefile
+# ERL Scout — Makefile
 # ══════════════════════════════════════════════════════════════════════════════
 # Ce Makefile automatise les tâches courantes du pipeline ML.
 # Usage : make <commande>
@@ -23,7 +23,7 @@ PYTHON ?= python
 # ── Commande par défaut ──────────────────────────────────────────────────────
 help:
 	@echo "╔══════════════════════════════════════════════════════════╗"
-	@echo "║        🏆 KCorp Scouting Tool — Commandes              ║"
+	@echo "║        🏆 ERL Scout — Commandes              ║"
 	@echo "╠══════════════════════════════════════════════════════════╣"
 	@echo "║  make data      │ Télécharge les CSV Oracle's Elixir   ║"
 	@echo "║  make clean     │ Nettoie et filtre les données        ║"
@@ -119,3 +119,18 @@ mcp-test:  ## Lance uniquement les tests du serveur MCP
 	pytest tests/test_mcp_server.py -v
 
 .PHONY: mcp mcp-test
+
+agent:  ## Pose une question a l'agent : make agent Q="qui est le meilleur mid de LFL ?"
+	python -m agent "$(Q)"
+
+evals:  ## Lance le banc d'evaluation (reference deterministe, sans cle d'API)
+	python -m evals.run --runs 5
+
+evals-record:  ## Rejoue le banc contre un vrai modele et enregistre les reponses (necessite une cle)
+	python -m evals.run --runs 1 --provider anthropic --record
+
+evals-replay:  ## Rejoue les enregistrements, sans cle et sans cout
+	python -m evals.run --runs 5 --provider cassette
+
+truth:  ## Affiche la verite terrain calculee en SQL pour chaque question
+	python -m evals.truth

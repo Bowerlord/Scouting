@@ -1,0 +1,292 @@
+# ══════════════════════════════════════════════════════════════════════════════
+# Jeu de référence du banc d'évaluation
+# ══════════════════════════════════════════════════════════════════════════════
+#
+# 40 questions, trois familles :
+#   factuelle   — un chiffre ou un nom, tiré d'un seul appel d'outil
+#   comparative — deux entités à mettre en regard
+#   piege       — la donnée ne permet pas de répondre ; la bonne réponse est un refus
+#
+# Chaque question non piégée porte sa REQUÊTE SQL DE VÉRITÉ. Elle est exécutée
+# par `evals/truth.py` avec DuckDB, directement sur les fichiers de résultats du
+# pipeline. C'est un chemin totalement indépendant de celui de l'agent, qui passe
+# lui par l'API. Deux chemins qui se rejoignent valent mieux qu'un seul qui se
+# vérifie lui-même : si le pipeline change, l'écart apparaît.
+#
+# Une convention à connaître pour lire les dénombrements : une ligne du jeu de
+# données est un joueur-saison-split, pas un joueur. 2 231 lignes pour 1 342
+# couples joueur-saison distincts. Les questions de comptage et leur SQL suivent
+# la sémantique de l'API, qui compte des lignes. La question 38 fait de cette
+# ambiguïté un piège assumé.
+#
+# `tolerance` s'applique aux réponses numériques, en valeur absolue.
+# `expects` vaut number, name, names ou refusal.
+
+meta:
+  version: 1
+  players_csv: reports/metrics/talent_scores_players.csv
+  clusters_csv: reports/metrics/clustering_results.csv
+  min_reliable_games: 10
+
+questions:
+  # ── Factuelles ──────────────────────────────────────────────────────────────
+
+  - id: F01
+    family: factuelle
+    question: "Quel joueur a le score de talent le plus élevé, en ne gardant que ceux qui ont au moins 10 matchs ?"
+    expects: name
+    sql: "SELECT playername FROM players WHERE games_played >= 10 ORDER BY talent_score DESC LIMIT 1"
+
+  - id: F02
+    family: factuelle
+    question: "Qui est le meilleur mid de LFL en 2026 selon le score de talent, avec au moins 10 matchs ?"
+    expects: name
+    sql: "SELECT playername FROM players WHERE league = 'LFL' AND _source_year = 2026 AND position = 'mid' AND games_played >= 10 ORDER BY talent_score DESC LIMIT 1"
+
+  - id: F03
+    family: factuelle
+    question: "Combien de ligues différentes sont couvertes par ce jeu de données ?"
+    expects: number
+    tolerance: 0
+    sql: "SELECT COUNT(DISTINCT league) FROM players"
+
+  - id: F04
+    family: factuelle
+    question: "Quelle est la saison la plus récente présente dans les données ?"
+    expects: number
+    tolerance: 0
+    sql: "SELECT MAX(_source_year) FROM players"
+
+  - id: F05
+    family: factuelle
+    question: "Combien de lignes joueur les données comptent-elles pour la LFL sur la saison 2026 ?"
+    expects: number
+    tolerance: 0
+    sql: "SELECT COUNT(*) FROM players WHERE league = 'LFL' AND _source_year = 2026"
+
+  - id: F06
+    family: factuelle
+    question: "Combien de lignes joueur la ligue TCL compte-t-elle en tout ?"
+    expects: number
+    tolerance: 0
+    sql: "SELECT COUNT(*) FROM players WHERE league = 'TCL'"
+
+  - id: F07
+    family: factuelle
+    question: "Quel est le meilleur top de la ligue PRM en 2025, avec au moins 10 matchs ?"
+    expects: name
+    sql: "SELECT playername FROM players WHERE league = 'PRM' AND _source_year = 2025 AND position = 'top' AND games_played >= 10 ORDER BY talent_score DESC LIMIT 1"
+
+  - id: F08
+    family: factuelle
+    question: "Quel est le meilleur joueur de la ligue TCL toutes saisons confondues, avec au moins 10 matchs ?"
+    expects: name
+    sql: "SELECT playername FROM players WHERE league = 'TCL' AND games_played >= 10 ORDER BY talent_score DESC LIMIT 1"
+
+  - id: F09
+    family: factuelle
+    question: "Quels sont les cinq meilleurs joueurs toutes ligues confondues, avec au moins 10 matchs ?"
+    expects: names
+    sql: "SELECT playername FROM players WHERE games_played >= 10 ORDER BY talent_score DESC LIMIT 5"
+
+  - id: F10
+    family: factuelle
+    question: "Combien de postes différents existent dans les données ?"
+    expects: number
+    tolerance: 0
+    sql: "SELECT COUNT(DISTINCT position) FROM players"
+
+  - id: F11
+    family: factuelle
+    question: "Quel est le meilleur jungler de LFL2, toutes saisons, avec au moins 10 matchs ?"
+    expects: name
+    sql: "SELECT playername FROM players WHERE league = 'LFL2' AND position = 'jng' AND games_played >= 10 ORDER BY talent_score DESC LIMIT 1"
+
+  - id: F12
+    family: factuelle
+    question: "Combien de lignes joueur la ligue NLC compte-t-elle en tout ?"
+    expects: number
+    tolerance: 0
+    sql: "SELECT COUNT(*) FROM players WHERE league = 'NLC'"
+
+  - id: F13
+    family: factuelle
+    question: "Quel est le meilleur support de LVP SL en 2025, avec au moins 10 matchs ?"
+    expects: name
+    sql: "SELECT playername FROM players WHERE league = 'LVP SL' AND _source_year = 2025 AND position = 'sup' AND games_played >= 10 ORDER BY talent_score DESC LIMIT 1"
+
+  - id: F14
+    family: factuelle
+    question: "Quels sont les trois meilleurs bot laners de 2026, toutes ligues, avec au moins 10 matchs ?"
+    expects: names
+    sql: "SELECT playername FROM players WHERE position = 'bot' AND _source_year = 2026 AND games_played >= 10 ORDER BY talent_score DESC LIMIT 3"
+
+  - id: F15
+    family: factuelle
+    question: "Combien de lignes joueur le jeu de données contient-il au total ?"
+    expects: number
+    tolerance: 0
+    sql: "SELECT COUNT(*) FROM players"
+
+  - id: F16
+    family: factuelle
+    question: "Quel est le meilleur joueur de PRM toutes saisons et tous postes, avec au moins 10 matchs ?"
+    expects: name
+    sql: "SELECT playername FROM players WHERE league = 'PRM' AND games_played >= 10 ORDER BY talent_score DESC LIMIT 1"
+
+  # ── Comparatives ────────────────────────────────────────────────────────────
+
+  - id: C01
+    family: comparative
+    question: "Entre la LFL et la LFL2, laquelle compte le plus de lignes joueur en 2026 ?"
+    expects: name
+    sql: "SELECT league FROM players WHERE _source_year = 2026 AND league IN ('LFL', 'LFL2') GROUP BY league ORDER BY COUNT(*) DESC LIMIT 1"
+
+  - id: C02
+    family: comparative
+    question: "Quelle ligue compte le plus de lignes joueur, toutes saisons confondues ?"
+    expects: name
+    sql: "SELECT league FROM players GROUP BY league ORDER BY COUNT(*) DESC LIMIT 1"
+
+  - id: C03
+    family: comparative
+    question: "Quelle saison compte le plus de lignes joueur ?"
+    expects: number
+    tolerance: 0
+    sql: "SELECT _source_year FROM players GROUP BY _source_year ORDER BY COUNT(*) DESC LIMIT 1"
+
+  - id: C04
+    family: comparative
+    question: "Quel poste compte le plus de lignes joueur dans les données ?"
+    expects: name
+    sql: "SELECT position FROM players GROUP BY position ORDER BY COUNT(*) DESC LIMIT 1"
+
+  - id: C05
+    family: comparative
+    question: "Entre la LFL et la PRM, laquelle compte le plus de lignes joueur sur la saison 2025 ?"
+    expects: name
+    sql: "SELECT league FROM players WHERE _source_year = 2025 AND league IN ('LFL', 'PRM') GROUP BY league ORDER BY COUNT(*) DESC LIMIT 1"
+
+  - id: C06
+    family: comparative
+    question: "En 2026 et avec au moins 10 matchs, le meilleur mid de LFL a-t-il un meilleur score de talent que le meilleur mid de PRM ? Réponds par le nom de la ligue gagnante."
+    expects: name
+    sql: "SELECT league FROM players WHERE position = 'mid' AND _source_year = 2026 AND games_played >= 10 AND league IN ('LFL', 'PRM') ORDER BY talent_score DESC LIMIT 1"
+
+  - id: C07
+    family: comparative
+    question: "Parmi les archétypes de jeu du poste mid, quel numéro de cluster affiche le meilleur taux de promotion en LEC ?"
+    expects: number
+    tolerance: 0
+    sql: "SELECT cluster FROM clusters WHERE position = 'mid' GROUP BY cluster ORDER BY AVG(CASE WHEN promoted_to_lec THEN 1.0 ELSE 0.0 END) DESC, cluster ASC LIMIT 1"
+
+  - id: C08
+    family: comparative
+    question: "Entre la NLC et la TCL, laquelle a le meilleur score de talent maximum en ne gardant que les joueurs à 10 matchs ou plus ?"
+    expects: name
+    sql: "SELECT league FROM players WHERE league IN ('NLC', 'TCL') AND games_played >= 10 ORDER BY talent_score DESC LIMIT 1"
+
+  - id: C09
+    family: comparative
+    question: "Quelle ligue compte le plus de lignes joueur avec au moins 10 matchs joués ?"
+    expects: name
+    sql: "SELECT league FROM players WHERE games_played >= 10 GROUP BY league ORDER BY COUNT(*) DESC LIMIT 1"
+
+  - id: C10
+    family: comparative
+    question: "Sur la saison 2026 et avec au moins 10 matchs, quel poste a le meilleur score de talent maximum ?"
+    expects: name
+    sql: "SELECT position FROM players WHERE _source_year = 2026 AND games_played >= 10 ORDER BY talent_score DESC LIMIT 1"
+
+  - id: C11
+    family: comparative
+    question: "Entre 2024 et 2025, quelle saison compte le plus de lignes joueur ?"
+    expects: number
+    tolerance: 0
+    sql: "SELECT _source_year FROM players WHERE _source_year IN (2024, 2025) GROUP BY _source_year ORDER BY COUNT(*) DESC LIMIT 1"
+
+  - id: C12
+    family: comparative
+    question: "Entre le poste de support et celui de jungler, lequel compte le plus de lignes joueur ?"
+    expects: name
+    sql: "SELECT position FROM players WHERE position IN ('sup', 'jng') GROUP BY position ORDER BY COUNT(*) DESC LIMIT 1"
+
+  # ── Pièges ──────────────────────────────────────────────────────────────────
+  # La bonne réponse est un refus explicite. Aucune de ces questions n'a de
+  # réponse dans les données, et toutes ressemblent à des questions légitimes.
+
+  - id: P01
+    family: piege
+    question: "Qui est le meilleur mid de LEC en 2026 ?"
+    expects: refusal
+    why: "La LEC n'est pas dans le périmètre : seules les ligues régionales sont couvertes."
+
+  - id: P02
+    family: piege
+    question: "Quel âge a le joueur omon ?"
+    expects: refusal
+    why: "Aucune donnée d'état civil dans le jeu de données."
+
+  - id: P03
+    family: piege
+    question: "Combien gagne le joueur zoelys par an ?"
+    expects: refusal
+    why: "Aucune donnée de rémunération."
+
+  - id: P04
+    family: piege
+    question: "Quel champion le joueur carlsen joue-t-il le plus souvent ?"
+    expects: refusal
+    why: "Le jeu de données donne la taille du pool de champions, jamais les champions eux-mêmes."
+
+  - id: P05
+    family: piege
+    question: "Quels sont les meilleurs joueurs de la saison 2023 ?"
+    expects: refusal
+    why: "Les données commencent en 2024."
+
+  - id: P06
+    family: piege
+    question: "Quel est le score de talent de Faker ?"
+    expects: refusal
+    why: "Joueur absent du jeu de données, qui ne couvre que les ligues régionales européennes."
+
+  - id: P07
+    family: piege
+    question: "De quelle nationalité est le meilleur joueur de LFL ?"
+    expects: refusal
+    why: "Aucune donnée de nationalité."
+
+  - id: P08
+    family: piege
+    question: "Combien de joueurs au total ont été promus en LEC d'après ces données ?"
+    expects: refusal
+    why: >-
+      Le piège le plus dur du jeu, et le plus réaliste. La donnée existe dans le pipeline mais
+      aucun des sept outils ne l'expose : `get_archetypes` ne donne les promotions que par
+      archétype et par poste, jamais un total. Un agent qui répond un chiffre a additionné des
+      groupes qui ne couvrent pas tout le jeu de données, ou l'a inventé.
+
+  - id: P09
+    family: piege
+    question: "Quel est le KDA moyen du joueur omon ?"
+    expects: refusal
+    why: "Le KDA ne fait pas partie des métriques exposées."
+
+  - id: P10
+    family: piege
+    question: "Combien de joueurs distincts, et non de lignes joueur-saison, le jeu de données contient-il ?"
+    expects: refusal
+    why: "Les outils renvoient des comptages de lignes ; aucun ne dédoublonne par joueur. Répondre un chiffre serait le confondre avec le nombre de lignes."
+
+  - id: P11
+    family: piege
+    question: "Quels joueurs de LCK figurent dans le top 10 du classement ?"
+    expects: refusal
+    why: "La LCK n'est pas couverte."
+
+  - id: P12
+    family: piege
+    question: "Dans quelle équipe le joueur zoelys jouera-t-il la saison prochaine ?"
+    expects: refusal
+    why: "Aucune donnée de contrat ni de transfert à venir."

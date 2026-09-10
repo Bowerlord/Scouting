@@ -1,5 +1,5 @@
 # ══════════════════════════════════════════════════════════════════════════════
-# KCorp Scouting Tool — .gitignore
+# ERL Scout — .gitignore
 # ══════════════════════════════════════════════════════════════════════════════
 
 # --- Données (trop volumineuses pour Git) ---
@@ -81,3 +81,8 @@ dbt/.user.yml
 
 # Configuration locale de lancement (specifique a la machine)
 .claude/
+
+# Enregistrements de reponses de modele pour le banc d'evaluation.
+# Ils sont versionnes volontairement (c'est ce qui rend le rejeu reproductible),
+# mais pas les brouillons locaux.
+evals/cassettes/local-*.json
