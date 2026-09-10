@@ -1,5 +1,5 @@
 # ══════════════════════════════════════════════════════════════════════════════
-# KCorp Scouting Tool — Makefile
+# ERL Scout — Makefile
 # ══════════════════════════════════════════════════════════════════════════════
 # Ce Makefile automatise les tâches courantes du pipeline ML.
 # Usage : make <commande>
@@ -23,7 +23,7 @@ PYTHON ?= python
 # ── Commande par défaut ──────────────────────────────────────────────────────
 help:
 	@echo "╔══════════════════════════════════════════════════════════╗"
-	@echo "║        🏆 KCorp Scouting Tool — Commandes              ║"
+	@echo "║        🏆 ERL Scout — Commandes              ║"
 	@echo "╠══════════════════════════════════════════════════════════╣"
 	@echo "║  make data      │ Télécharge les CSV Oracle's Elixir   ║"
 	@echo "║  make clean     │ Nettoie et filtre les données        ║"
