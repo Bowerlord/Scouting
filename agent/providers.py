@@ -28,11 +28,23 @@ from typing import Any, Protocol
 
 CASSETTE_PATH = Path(os.getenv("SCOUTING_CASSETTE", "evals/cassettes/default.json"))
 
-# Prix affichés par les fournisseurs, en dollars par million de jetons, et le
-# taux retenu pour la conversion. Ces trois nombres sont des hypothèses : ils
-# sont écrits ici, en un seul endroit, pour qu'un chiffre de coût publié dans un
-# rapport puisse être refait à la main par qui le lit.
+# ── Tarifs ────────────────────────────────────────────────────────────────────
+#
+# Prix en dollars par million de jetons, et taux de conversion retenu.
+#
+# UNE RÈGLE, ET ELLE EST STRICTE : un modèle absent de cette table n'a pas un
+# coût estimé, il a un coût **inconnu**. `cost_eur` renvoie alors None et le
+# rapport écrit « non chiffré » au lieu d'un nombre.
+#
+# La version précédente appliquait le tarif de Sonnet à tout modèle inconnu.
+# Un modèle bon marché à 0,25 $ le million se serait vu attribuer un coût douze
+# fois trop élevé, et la comparaison entre modèles, qui est tout l'intérêt de la
+# manœuvre, aurait été fausse sans que rien ne le signale.
+#
+# Les tarifs bougent. Avant de publier un chiffre de coût, revérifier sur la
+# page du fournisseur et mettre à jour la date ci-dessous.
 USD_PER_EUR = 1.08
+TARIFS_RELEVES_LE = "2026-09-10"
 
 PRICING_USD_PER_MTOK: dict[str, tuple[float, float]] = {
     # modèle: (entrée, sortie)
@@ -42,13 +54,12 @@ PRICING_USD_PER_MTOK: dict[str, tuple[float, float]] = {
     "gpt-4o": (2.5, 10.0),
     "gpt-4o-mini": (0.15, 0.6),
     # La référence heuristique n'appelle aucun modèle : son coût est nul, et
-    # l'écrire ici évite qu'un rapport publie un coût inventé par le tarif
-    # par défaut. Un chiffre faux dans un rapport de mesure est pire que pas
-    # de chiffre du tout.
+    # l'écrire ici évite qu'un rapport publie un coût inventé.
     "heuristique-v1": (0.0, 0.0),
+    # Modèles à bas coût : à renseigner après relevé sur la page du fournisseur.
+    # Laisser une entrée absente est volontaire tant que le tarif n'a pas été
+    # vérifié en direct — mieux vaut « non chiffré » qu'un chiffre inventé.
 }
-
-DEFAULT_PRICING = (3.0, 15.0)
 
 
 class ProviderError(RuntimeError):
@@ -77,8 +88,16 @@ class Usage:
             output_tokens=self.output_tokens + other.output_tokens,
         )
 
-    def cost_eur(self, model: str) -> float:
-        entree, sortie = PRICING_USD_PER_MTOK.get(model, DEFAULT_PRICING)
+    def cost_eur(self, model: str) -> float | None:
+        """Le coût en euros, ou None si le tarif du modèle n'est pas connu.
+
+        None n'est pas un détail : c'est ce qui empêche un rapport d'annoncer
+        un coût faux pour un modèle dont personne n'a relevé le prix.
+        """
+        tarif = PRICING_USD_PER_MTOK.get(model)
+        if tarif is None:
+            return None
+        entree, sortie = tarif
         usd = (self.input_tokens * entree + self.output_tokens * sortie) / 1_000_000
         return usd / USD_PER_EUR
 
@@ -315,23 +334,94 @@ class AnthropicProvider:
 # ── OpenAI ────────────────────────────────────────────────────────────────────
 
 
+#: Points d'entrée compatibles avec le dialecte OpenAI.
+#:
+#: Ils parlent tous le même protocole d'appel de fonctions, donc une seule
+#: implémentation les couvre : seuls changent l'URL de base, la variable
+#: d'environnement qui porte la clé, et le modèle par défaut.
+#:
+#: Deux réserves à garder en tête, et elles comptent plus que le prix :
+#:
+#: 1. **La qualité de l'appel de fonctions varie énormément.** Un modèle bon
+#:    marché peut très bien converser et très mal choisir ses outils, ce qui est
+#:    précisément ce qu'on lui demande ici. C'est au banc de trancher, pas à
+#:    l'intuition ni à la fiche technique.
+#: 2. **La donnée sort de l'UE** chez plusieurs de ces fournisseurs. Sans
+#:    conséquence ici (statistiques d'esport publiques), rédhibitoire ailleurs.
+ENDPOINTS: dict[str, dict[str, str]] = {
+    "openai": {
+        "base_url": "",
+        "api_key_env": "OPENAI_API_KEY",
+        "default_model": "gpt-4o-mini",
+    },
+    "deepseek": {
+        "base_url": "https://api.deepseek.com/v1",
+        "api_key_env": "DEEPSEEK_API_KEY",
+        "default_model": "deepseek-chat",
+    },
+    "glm": {
+        "base_url": "https://open.bigmodel.cn/api/paas/v4",
+        "api_key_env": "GLM_API_KEY",
+        "default_model": "glm-4-flash",
+    },
+    "mistral": {
+        "base_url": "https://api.mistral.ai/v1",
+        "api_key_env": "MISTRAL_API_KEY",
+        "default_model": "mistral-small-latest",
+    },
+    "groq": {
+        "base_url": "https://api.groq.com/openai/v1",
+        "api_key_env": "GROQ_API_KEY",
+        "default_model": "llama-3.3-70b-versatile",
+    },
+    "openrouter": {
+        "base_url": "https://openrouter.ai/api/v1",
+        "api_key_env": "OPENROUTER_API_KEY",
+        "default_model": "deepseek/deepseek-chat",
+    },
+    # Modèle local : aucune clé, aucune donnée qui sort de la machine.
+    "ollama": {
+        "base_url": "http://localhost:11434/v1",
+        "api_key_env": "",
+        "default_model": "qwen2.5:7b",
+    },
+}
+
+
 class OpenAIProvider:
-    """Appelle l'API OpenAI. Nécessite `openai` et OPENAI_API_KEY."""
+    """Tout fournisseur parlant le dialecte OpenAI : OpenAI, DeepSeek, GLM, Groq, Ollama…
 
-    name = "openai"
+    Une seule classe pour tous, parce qu'ils partagent le protocole. Ajouter un
+    fournisseur ne demande donc pas d'écrire du code, mais une entrée dans
+    `ENDPOINTS` — et c'est bien ce qu'on veut : chaque implémentation en double
+    est une occasion de diverger en silence.
+    """
 
-    def __init__(self, model: str = "gpt-4o-mini", max_tokens: int = 1024) -> None:
+    def __init__(
+        self,
+        model: str | None = None,
+        max_tokens: int = 1024,
+        endpoint: str = "openai",
+    ) -> None:
         try:
             from openai import OpenAI
         except ImportError as error:  # pragma: no cover — dépend de l'environnement
             raise ProviderError("Le paquet `openai` n'est pas installé : pip install openai") from error
 
-        if not os.getenv("OPENAI_API_KEY"):
-            raise ProviderError("OPENAI_API_KEY n'est pas définie.")
+        config = ENDPOINTS.get(endpoint)
+        if config is None:
+            connus = ", ".join(sorted(ENDPOINTS))
+            raise ProviderError(f"Point d'entrée inconnu : {endpoint}. Connus : {connus}.")
 
-        self.model = model
+        variable = config["api_key_env"]
+        cle = os.getenv(variable) if variable else "local"
+        if not cle:
+            raise ProviderError(f"{variable} n'est pas définie (fournisseur {endpoint}).")
+
+        self.name = endpoint
+        self.model = model or config["default_model"]
         self.max_tokens = max_tokens
-        self._client = OpenAI()
+        self._client = OpenAI(api_key=cle, base_url=config["base_url"] or None)
 
     @staticmethod
     def _tools(tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -446,10 +536,11 @@ def get_provider(
         return CassetteProvider(path=path)
 
     if name == "anthropic":
-        inner = AnthropicProvider(model=model or "claude-sonnet-5")
-    elif name == "openai":
-        inner = OpenAIProvider(model=model or "gpt-4o-mini")
+        inner: LLMProvider = AnthropicProvider(model=model or "claude-sonnet-5")
+    elif name in ENDPOINTS:
+        inner = OpenAIProvider(model=model, endpoint=name)
     else:
-        raise ProviderError(f"Fournisseur inconnu : {name}. Attendu : heuristique, cassette, anthropic ou openai.")
+        connus = ", ".join(["heuristique", "cassette", "anthropic", *sorted(ENDPOINTS)])
+        raise ProviderError(f"Fournisseur inconnu : {name}. Connus : {connus}.")
 
     return CassetteProvider(path=path, inner=inner, model=inner.model) if record else inner

@@ -221,3 +221,40 @@ def test_la_reference_est_deterministe():
     agent = ScoutAgent(provider=BaselineProvider())
     question = "Quel joueur a le score de talent le plus élevé, en ne gardant que ceux qui ont au moins 10 matchs ?"
     assert agent.ask(question).text == agent.ask(question).text
+
+
+# ── Fournisseurs compatibles OpenAI ───────────────────────────────────────────
+
+
+def test_les_points_dentree_declarent_ce_quil_faut():
+    from agent.providers import ENDPOINTS
+
+    for nom, config in ENDPOINTS.items():
+        assert "base_url" in config, nom
+        assert "api_key_env" in config, nom
+        assert config["default_model"], nom
+
+
+def test_deepseek_et_glm_sont_selectionnables():
+    from agent.providers import ENDPOINTS
+
+    assert {"deepseek", "glm", "groq", "openrouter", "ollama"} <= set(ENDPOINTS)
+
+
+def test_un_fournisseur_inconnu_liste_les_fournisseurs_connus():
+    with pytest.raises(ProviderError, match="deepseek"):
+        get_provider("fournisseur-imaginaire")
+
+
+def test_une_cle_absente_nomme_la_variable_attendue(monkeypatch):
+    pytest.importorskip("openai")
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+    with pytest.raises(ProviderError, match="DEEPSEEK_API_KEY"):
+        get_provider("deepseek")
+
+
+def test_un_tarif_non_releve_donne_un_cout_inconnu_et_non_un_cout_faux():
+    """La régression à ne jamais réintroduire : appliquer le tarif de Sonnet à tout modèle."""
+    usage = Usage(input_tokens=1_000_000, output_tokens=1_000_000)
+    assert usage.cost_eur("deepseek-chat") is None
+    assert usage.cost_eur("claude-sonnet-5") is not None

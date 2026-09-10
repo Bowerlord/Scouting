@@ -1,8 +1,8 @@
 # Banc d'évaluation de l'agent ERL Scout
 
-*Exécuté le 2026-09-10T11:11:58+00:00 — 40 questions × 5 passes*
+*Exécuté le 2026-09-10T14:49:08+00:00 — 40 questions × 5 passes*
 
-Modèle : `heuristique-v1` · fournisseur : `heuristique` · durée : 8.4 s
+Modèle : `heuristique-v1` · fournisseur : `heuristique` · durée : 9.5 s
 
 ## Les chiffres
 
@@ -17,7 +17,7 @@ Modèle : `heuristique-v1` · fournisseur : `heuristique` · durée : 8.4 s
 | **Hallucinations** | 2.5 % | — |
 | Instabilité du verdict | 0.0 % | — |
 | Instabilité des chiffres cités | 0.0 % | — |
-| Latence p50 | 5 ms | — |
+| Latence p50 | 4 ms | — |
 | Latence p95 | 7 ms | — |
 | Coût par question | 0.00000 € | — |
 | Coût total de l'exécution | 0.0000 € | — |
@@ -74,7 +74,7 @@ Cette section est la raison d'être du banc. Savoir *lesquelles* échouent vaut 
 
 > Quel poste compte le plus de lignes joueur dans les données ?
 
-- Attendu : `bot`
+- Attendu : `jng`
 - Verdict dominant : `faux`
 - Outils appelés : `get_leaderboard`
 - Dernière réponse : zoelys (LFL, sup), score de talent 99.7805338307476, 71 matchs joués.

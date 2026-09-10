@@ -59,17 +59,19 @@ class Answer:
     def tool_names(self) -> list[str]:
         return [call.name for call in self.trace]
 
-    def cost_eur(self) -> float:
+    def cost_eur(self) -> float | None:
+        """Le coût, ou None si le tarif du modèle n'est pas renseigné."""
         return self.usage.cost_eur(self.model)
 
     def to_dict(self) -> dict[str, Any]:
+        cost = self.cost_eur()
         return {
             "question": self.question,
             "text": self.text,
             "trace": [call.__dict__ for call in self.trace],
             "usage": self.usage.__dict__,
             "latency_ms": round(self.latency_ms, 1),
-            "cost_eur": round(self.cost_eur(), 6),
+            "cost_eur": None if cost is None else round(cost, 6),
             "model": self.model,
             "steps": self.steps,
             "truncated": self.truncated,
@@ -163,11 +165,12 @@ def main() -> None:  # pragma: no cover — point d'entrée interactif
         raise SystemExit(2)
 
     result = ask(" ".join(sys.argv[1:]))
+    cost = result.cost_eur()
     print(result.text)
     print()
     print(
         f"— {result.steps} étapes, outils : {', '.join(result.tool_names) or 'aucun'}, "
         f"{result.usage.input_tokens + result.usage.output_tokens} jetons, "
-        f"{result.cost_eur():.4f} €, {result.latency_ms:.0f} ms"
+        f"{'tarif inconnu' if cost is None else f'{cost:.4f} €'}, {result.latency_ms:.0f} ms"
     )
     print(json.dumps(result.to_dict(), ensure_ascii=False, indent=2), file=sys.stderr)

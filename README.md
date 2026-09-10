@@ -473,6 +473,39 @@ evals/
    répondrait « données insuffisantes » à tout obtiendrait 100 % sur les pièges.
    Les deux chiffres se lisent ensemble, ou pas du tout.
 
+### Choisir le modèle, et le prouver
+
+L'agent ne dépend d'aucun fournisseur. Anthropic a sa propre implémentation ;
+tous les autres parlent le dialecte OpenAI et se déclarent par une simple entrée
+dans `ENDPOINTS` :
+
+| Fournisseur | Variable de clé | Intérêt |
+|---|---|---|
+| `anthropic` | `ANTHROPIC_API_KEY` | Référence de qualité |
+| `openai` | `OPENAI_API_KEY` | Référence de qualité |
+| `deepseek` | `DEEPSEEK_API_KEY` | Coût très bas |
+| `glm` | `GLM_API_KEY` | Coût très bas |
+| `mistral` | `MISTRAL_API_KEY` | Hébergement européen |
+| `groq` | `GROQ_API_KEY` | Latence très basse |
+| `openrouter` | `OPENROUTER_API_KEY` | Accès à tout, par une seule clé |
+| `ollama` | *(aucune)* | Modèle local, aucune donnée qui sort de la machine |
+
+```bash
+python -m evals.run --runs 5 --provider deepseek
+python -m evals.run --runs 5 --provider ollama --model qwen2.5:7b
+```
+
+**Le banc est fait pour cet arbitrage.** Un modèle bon marché peut très bien
+converser et très mal choisir ses outils, ce qui est exactement ce qu'on lui
+demande ici. La fiche technique ne le dit pas, les 40 questions si : exactitude,
+hallucinations et coût par question, dans le même tableau.
+
+Un garde-fou volontaire : **un modèle dont le tarif n'est pas renseigné dans
+`PRICING_USD_PER_MTOK` voit son coût publié comme « non chiffré », jamais estimé
+par défaut.** La version précédente appliquait le tarif de Sonnet à tout modèle
+inconnu, ce qui aurait attribué à un modèle à 0,25 $ le million un coût douze
+fois trop élevé — et faussé silencieusement la seule comparaison qui compte.
+
 ### La non-régression
 
 Chaque exécution écrit un rapport horodaté et **le compare au précédent**, écart
