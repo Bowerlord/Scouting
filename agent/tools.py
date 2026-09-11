@@ -175,6 +175,33 @@ TOOLS: list[dict[str, Any]] = [
     },
 ]
 
+def _autoriser_null_sur_les_optionnels(outils: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Rend les paramètres facultatifs explicitement nullables.
+
+    Un paramètre absent de `required` peut être omis, et c'est ce que la
+    spécification attend. Mais les modèles écrivent très souvent `null` pour
+    dire « pas de filtre », et les fournisseurs ne réagissent pas pareil :
+    Anthropic et OpenAI l'acceptent, **Groq valide la génération contre le
+    schéma et rejette l'appel entier avec une erreur 400**. Relevé le
+    2026-09-11 sur `get_leaderboard`, avec `"season": null`.
+
+    Déclarer `["integer", "null"]` rend l'intention légale partout. Côté
+    exécution, `execute()` purge déjà les valeurs nulles : le comportement ne
+    change pas, seul le contrat s'aligne sur ce que les modèles produisent.
+    """
+    for outil in outils:
+        parametres = outil.get("parameters", {})
+        requis = set(parametres.get("required", []))
+        for nom, schema in parametres.get("properties", {}).items():
+            type_declare = schema.get("type")
+            if nom in requis or not isinstance(type_declare, str) or type_declare == "null":
+                continue
+            schema["type"] = [type_declare, "null"]
+    return outils
+
+
+_autoriser_null_sur_les_optionnels(TOOLS)
+
 TOOL_NAMES = {tool["name"] for tool in TOOLS}
 
 
