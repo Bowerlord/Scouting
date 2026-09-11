@@ -107,7 +107,9 @@ def run_bench(
                     model=getattr(provider, "model", "inconnu"),
                 )
             outcome.answers.append(answer)
-            outcome.grades.append(grade(outcome.question, answer.text))
+            outcome.grades.append(
+                grade(outcome.question, answer.text, getattr(answer, "provider_error", None))
+            )
 
         if verbose:
             done = sum(1 for o in outcomes if o.grades[-1].ok)
@@ -350,7 +352,9 @@ def render_report(summary: dict[str, Any], previous: dict[str, Any] | None) -> s
     else:
         add("## Échecs")
         add("")
-        add("Aucun. Les 40 questions passent sur toutes les passes.")
+        # Le nombre était écrit en dur : le rapport annonçait « les 40 questions »
+        # même lancé avec --only sur une poignée d'entre elles.
+        add(f"Aucun. Les {summary['questions']} questions passent sur toutes les passes.")
         add("")
 
     if summary["instables"]:
@@ -443,5 +447,20 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
+def _forcer_utf8() -> None:
+    """Empêche le rapport de faire tomber la console Windows.
+
+    Le rapport contient des caractères hors cp1252, l'encodage par défaut d'une
+    console Windows. Sans cela, `print(report)` lève un `UnicodeEncodeError`
+    après que tout le banc a tourné : le travail est fait, les fichiers sont
+    écrits, et la commande sort quand même en erreur. Relevé le 2026-09-11.
+    """
+    for flux in (sys.stdout, sys.stderr):
+        reconfigure = getattr(flux, "reconfigure", None)
+        if reconfigure is not None:
+            reconfigure(encoding="utf-8", errors="replace")
+
+
 if __name__ == "__main__":  # pragma: no cover
+    _forcer_utf8()
     raise SystemExit(main())

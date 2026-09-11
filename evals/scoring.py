@@ -43,6 +43,11 @@ class Verdict:
     REFUS_ATTENDU = "refus_attendu"
     REFUS_A_TORT = "refus_a_tort"
     HALLUCINATION = "hallucination"
+    #: Le fournisseur n'a pas répondu du tout. Ce n'est ni une bonne ni une
+    #: mauvaise réponse de l'agent : c'est une panne. La distinguer est
+    #: indispensable, sinon une coupure réseau sur une question piège serait
+    #: comptée comme un refus réussi et gonflerait le score.
+    ERREUR_FOURNISSEUR = "erreur_fournisseur"
 
 
 #: Les verdicts qui comptent comme une bonne réponse.
@@ -101,9 +106,26 @@ def _matches_number(text: str, expected: float, tolerance: float) -> bool:
     return False
 
 
-def grade(question: Question, answer_text: str) -> Grade:
-    """Juge une réponse au regard de la vérité terrain."""
+def grade(question: Question, answer_text: str, provider_error: str | None = None) -> Grade:
+    """Juge une réponse au regard de la vérité terrain.
+
+    `provider_error` court-circuite tout le reste : si le fournisseur n'a pas
+    répondu, il n'y a pas de réponse à juger. La compter comme fausse
+    accuserait l'agent d'une faute qu'il n'a pas commise ; la compter comme un
+    refus lui offrirait un point sur les questions pièges.
+    """
     text = answer_text or ""
+
+    if provider_error:
+        return Grade(
+            question.id,
+            question.family,
+            Verdict.ERREUR_FOURNISSEUR,
+            question.expected,
+            text,
+            detail=f"Le fournisseur n'a pas répondu : {provider_error}",
+        )
+
     refused = REFUSAL_MARKER in text
 
     if question.is_trap:
