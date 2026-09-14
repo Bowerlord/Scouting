@@ -100,6 +100,32 @@ def test_une_esquive_sans_le_marqueur_nest_pas_un_refus():
     assert grade_obtenu.verdict == Verdict.HALLUCINATION
 
 
+def test_une_panne_du_fournisseur_ne_rapporte_aucun_point_meme_sur_un_piege():
+    """Régression à ne pas réintroduire : une panne marquée comme refus valait un point."""
+    piege = _question(expects="refusal", family="piege", expected=None, why="hors périmètre")
+    grade_obtenu = grade(piege, "[banc] Le fournisseur n'a pas répondu.", provider_error="APIStatusError: 413")
+    assert grade_obtenu.verdict == Verdict.ERREUR_FOURNISSEUR
+    assert not grade_obtenu.ok
+
+
+def test_une_non_convergence_nest_ni_un_refus_ni_une_bonne_reponse():
+    """Relevé le 2026-09-14 : trois coupures comptées en refus à tort, qui auraient
+    compté comme refus réussis sur un piège."""
+    piege = _question(expects="refusal", family="piege", expected=None, why="hors périmètre")
+    repondable = _question(expected=83.0)
+    for question in (piege, repondable):
+        grade_obtenu = grade(question, "[banc] L'agent n'a pas convergé.", truncated=True)
+        assert grade_obtenu.verdict == Verdict.NON_CONVERGENCE
+        assert not grade_obtenu.ok
+
+
+def test_un_poste_est_reconnu_sous_sa_forme_parlee():
+    """Relevé le 2026-09-14 sur C12 : « le jungler » était compté faux, faute de la chaîne `jng`."""
+    question = _question(expects="name", expected="jng")
+    assert grade(question, "C'est le poste de jungler qui compte le plus de lignes.").verdict == Verdict.JUSTE
+    assert grade(question, "C'est le poste de mid.").verdict == Verdict.FAUX
+
+
 def test_un_type_attendu_inconnu_est_une_erreur_de_configuration():
     with pytest.raises(ValueError):
         grade(_question(expects="hologramme"), "peu importe")

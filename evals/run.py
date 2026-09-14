@@ -108,7 +108,12 @@ def run_bench(
                 )
             outcome.answers.append(answer)
             outcome.grades.append(
-                grade(outcome.question, answer.text, getattr(answer, "provider_error", None))
+                grade(
+                    outcome.question,
+                    answer.text,
+                    provider_error=answer.provider_error,
+                    truncated=answer.truncated,
+                )
             )
 
         if verbose:
@@ -178,6 +183,10 @@ def summarize(
         "par_famille": by_family,
         "refus_a_tort": _rate(all_grades, Verdict.REFUS_A_TORT),
         "hallucinations": _rate(all_grades, Verdict.HALLUCINATION),
+        # Les deux non-réponses sont publiées à part : sinon elles font baisser
+        # l'exactitude sans que le rapport dise pourquoi.
+        "non_convergence": _rate(all_grades, Verdict.NON_CONVERGENCE),
+        "erreurs_fournisseur": _rate(all_grades, Verdict.ERREUR_FOURNISSEUR),
         "refus_correct": (
             sum(1 for o in traps for g in o.grades if g.verdict == Verdict.REFUS_ATTENDU)
             / max(sum(len(o.grades) for o in traps), 1)
@@ -289,6 +298,10 @@ def render_report(summary: dict[str, Any], previous: dict[str, Any] | None) -> s
     add(f"| **Refus à tort** | {_pct(summary['refus_a_tort'])} | {ecart} |")
     ecart = _delta(summary["hallucinations"], _get(previous, "hallucinations"), higher_is_better=False)
     add(f"| **Hallucinations** | {_pct(summary['hallucinations'])} | {ecart} |")
+    ecart = _delta(summary["non_convergence"], _get(previous, "non_convergence"), higher_is_better=False)
+    add(f"| Non-convergence | {_pct(summary['non_convergence'])} | {ecart} |")
+    ecart = _delta(summary["erreurs_fournisseur"], _get(previous, "erreurs_fournisseur"), higher_is_better=False)
+    add(f"| Pannes du fournisseur | {_pct(summary['erreurs_fournisseur'])} | {ecart} |")
     ecart = _delta(summary["instabilite_verdict"], _get(previous, "instabilite_verdict"), higher_is_better=False)
     add(f"| Instabilité du verdict | {_pct(summary['instabilite_verdict'])} | {ecart} |")
     ecart = _delta(summary["instabilite_reponse"], _get(previous, "instabilite_reponse"), higher_is_better=False)

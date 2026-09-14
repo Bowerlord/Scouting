@@ -54,7 +54,9 @@ TOOLS: list[dict[str, Any]] = [
             "par « quels joueurs », « combien de joueurs », ou portant sur une ligue ou un poste "
             "entier. Le champ `total` de la réponse donne le nombre de joueurs correspondant au "
             "filtre, toutes pages confondues : c'est lui qu'il faut lire pour une question de "
-            "dénombrement, jamais la longueur de la liste `items` qui n'est qu'une page."
+            "dénombrement, jamais la longueur de la liste `items` qui n'est qu'une page. Pour un "
+            "simple dénombrement, passer `limit` à 1 : `total` reste exact, et la réponse ne "
+            "transporte pas cinquante fiches inutiles."
         ),
         "parameters": {
             "type": "object",

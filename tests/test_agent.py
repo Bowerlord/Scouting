@@ -116,8 +116,28 @@ def test_une_boucle_sans_fin_est_coupee_et_signalee():
     answer = ScoutAgent(provider=provider, max_steps=3).ask("question insoluble")
 
     assert answer.truncated
-    assert answer.refused, "une non-convergence doit être déclarée, pas maquillée en réponse"
     assert answer.steps == 3
+    assert "pas convergé" in answer.text, "une non-convergence doit être déclarée, pas maquillée en réponse"
+    # Et surtout pas en refus : un refus vaut un point sur les questions pièges.
+    assert not answer.refused
+
+
+class ProviderEnPanne:
+    """Fournisseur qui lève à chaque appel, comme un 413 ou un quota dépassé."""
+
+    name = "panne"
+    model = "claude-sonnet-5"
+
+    def complete(self, system, messages, tools):
+        raise RuntimeError("Error code: 413 - Request too large")
+
+
+def test_une_panne_du_fournisseur_perd_la_question_sans_lever():
+    answer = ScoutAgent(provider=ProviderEnPanne()).ask("question quelconque")
+
+    assert answer.provider_error and "413" in answer.provider_error
+    assert not answer.refused, "une panne ne doit pas se déguiser en refus"
+    assert not answer.truncated
 
 
 def test_une_panne_doutil_ne_casse_pas_la_conversation():

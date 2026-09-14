@@ -23,7 +23,11 @@ logger = logging.getLogger(__name__)
 # Au-delà, l'agent tourne en rond. Observé : les boucles infinies viennent
 # presque toujours d'un outil qui renvoie une erreur que le modèle réessaie à
 # l'identique. On coupe, et la trace montre la répétition.
-MAX_STEPS = 6
+#
+# Relevé de 6 à 8 le 2026-09-14. À 6, une stratégie juste ne tenait pas :
+# comparer six ligues demande six appels, puis une étape pour conclure. Trois
+# questions comparatives étaient coupées au moment exact où l'agent avait tout.
+MAX_STEPS = 8
 
 
 @dataclass
@@ -141,9 +145,12 @@ class ScoutAgent:
         else:
             # La boucle s'est épuisée sans réponse finale : on le dit plutôt que
             # de renvoyer le dernier texte intermédiaire, qui n'est pas une réponse.
+            # Sans le marqueur de refus, pour la même raison que la panne du
+            # fournisseur : une coupure n'est pas un refus, et un refus vaut un
+            # point sur les questions pièges. `truncated` porte l'information.
             answer.truncated = True
             answer.text = (
-                f"{REFUSAL_MARKER} L'agent n'a pas convergé en {self.max_steps} étapes "
+                f"[banc] L'agent n'a pas convergé en {self.max_steps} étapes "
                 "sans produire de réponse finale."
             )
 
