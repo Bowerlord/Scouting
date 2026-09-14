@@ -43,6 +43,9 @@ def _secret(nom: str) -> str | None:
 
 # Avant tout import de `agent` : le backend lit l'URL de l'API à l'import.
 os.environ.setdefault("SCOUTING_API_URL", _secret("SCOUTING_API_URL") or API_PUBLIQUE)
+# Le palier gratuit limite les jetons par minute : on laisse le client attendre
+# que le quota se recharge plutôt que d'abandonner la question à la deuxième étape.
+os.environ.setdefault("SCOUTING_LLM_MAX_RETRIES", _secret("SCOUTING_LLM_MAX_RETRIES") or "6")
 if _secret("GROQ_API_KEY"):
     os.environ["GROQ_API_KEY"] = _secret("GROQ_API_KEY")
 
@@ -151,7 +154,7 @@ if choix:
         st.warning("Limite quotidienne de la démo atteinte. Elle se rouvre demain.")
     else:
         st.session_state["posees"] = posees + 1
-        with st.spinner("L'agent interroge l'API…"):
+        with st.spinner("L'agent interroge l'API… jusqu'à une minute si le quota gratuit du modèle sature."):
             reponse = agent.ask(choix[1])
         st.session_state["dernier"] = (choix[0], reponse)
 

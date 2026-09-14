@@ -278,3 +278,21 @@ def test_un_tarif_non_releve_donne_un_cout_inconnu_et_non_un_cout_faux():
     usage = Usage(input_tokens=1_000_000, output_tokens=1_000_000)
     assert usage.cost_eur("deepseek-chat") is None
     assert usage.cost_eur("claude-sonnet-5") is not None
+
+
+# ── Relances en cas de refus de débit ─────────────────────────────────────────
+
+
+def test_le_nombre_de_relances_se_regle_par_variable_d_environnement(monkeypatch):
+    """Sans réseau ni vraie clé : on vérifie seulement la configuration du client."""
+    pytest.importorskip("openai")
+    from agent.providers import OpenAIProvider
+
+    monkeypatch.setenv("GROQ_API_KEY", "cle-de-test")
+    monkeypatch.setenv("SCOUTING_LLM_MAX_RETRIES", "6")
+    assert OpenAIProvider(endpoint="groq")._client.max_retries == 6
+
+    monkeypatch.delenv("SCOUTING_LLM_MAX_RETRIES")
+    import openai
+
+    assert OpenAIProvider(endpoint="groq")._client.max_retries == openai.DEFAULT_MAX_RETRIES

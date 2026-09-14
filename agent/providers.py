@@ -425,7 +425,16 @@ class OpenAIProvider:
         self.name = endpoint
         self.model = model or config["default_model"]
         self.max_tokens = max_tokens
-        self._client = OpenAI(api_key=cle, base_url=config["base_url"] or None)
+
+        # Relances en cas de refus de débit. Le client en fait deux par défaut, en
+        # respectant le délai annoncé par le fournisseur. Relevé le 2026-09-14 sur
+        # la démo en ligne : chez Groq, le palier gratuit plafonne à 8 000 jetons
+        # par minute, et chaque étape de l'agent renvoie le prompt et les sept
+        # outils. La deuxième étape d'une question était refusée ; deux relances
+        # ne laissaient pas au quota le temps de se recharger.
+        relances = os.getenv("SCOUTING_LLM_MAX_RETRIES")
+        options: dict[str, Any] = {"max_retries": int(relances)} if relances else {}
+        self._client = OpenAI(api_key=cle, base_url=config["base_url"] or None, **options)
 
     @staticmethod
     def _tools(tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
