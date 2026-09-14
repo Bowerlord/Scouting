@@ -121,20 +121,40 @@ def format_cout(cout_eur: float | None) -> str:
     return f"{cout_eur:.4f} €".replace(".", ",")
 
 
-def resume_banc(repertoire: Path) -> dict[str, Any] | None:
-    """Le dernier rapport mesuré sur un vrai modèle, ou None.
+#: Au-delà, un rapport mesure le quota du fournisseur, pas l'agent. Relevé le
+#: 2026-09-14 : le palier gratuit de Groq a lâché pendant la passe 2 sur 5, et
+#: le rapport publiait 27,5 % d'exactitude pour un agent à 90 %.
+PANNES_MAX = 0.10
 
-    Les rapports de la référence déterministe sont écartés : la page affiche
-    ce que vaut l'agent réel, pas le plancher de la CI.
+
+def resume_banc(repertoire: Path) -> dict[str, Any] | None:
+    """Le dernier rapport exploitable mesuré sur un vrai modèle, ou None.
+
+    Trois filtres, et chacun a une raison :
+    - la référence déterministe est écartée : la page affiche ce que vaut
+      l'agent réel, pas le plancher de la CI ;
+    - une seule passe ne dit rien de la stabilité, or c'est la question que
+      pose un système non déterministe ;
+    - un rapport noyé de pannes du fournisseur ne mesure pas l'agent.
+    Sans rapport qui passe les trois, la page n'affiche aucun chiffre plutôt
+    qu'un chiffre trompeur.
     """
     for chemin in sorted(repertoire.glob("*.json"), reverse=True):
         try:
             rapport = json.loads(chemin.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
             continue
-        if rapport.get("fournisseur") not in FOURNISSEURS_SIMULES:
-            return rapport
+        if rapport.get("fournisseur") in FOURNISSEURS_SIMULES:
+            continue
+        if rapport.get("passes", 1) < 2 or rapport.get("erreurs_fournisseur", 0) > PANNES_MAX:
+            continue
+        return rapport
     return None
+
+
+def quota_fournisseur_atteint(erreur: str | None) -> bool:
+    """Vrai si le fournisseur a refusé pour cause de limite de débit ou de quota."""
+    return bool(erreur) and ("429" in erreur or "RateLimit" in erreur or "rate_limit" in erreur)
 
 
 # ── Rendu HTML ────────────────────────────────────────────────────────────────

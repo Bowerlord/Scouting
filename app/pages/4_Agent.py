@@ -166,6 +166,13 @@ if "dernier" in st.session_state:
 
     st.markdown(demo.texte(reponse.question, "es-question"), unsafe_allow_html=True)
 
+    if demo.quota_fournisseur_atteint(reponse.provider_error):
+        st.info(
+            "Le quota gratuit du modèle est atteint pour aujourd'hui : le fournisseur a refusé "
+            "la question, l'agent n'a donc rien répondu. Ce n'est pas compté comme une erreur de "
+            "l'agent. Le quota se libère sur une fenêtre glissante de 24 heures."
+        )
+
     if question is None:
         verite = (
             '<div class="es-kicker">Vérité terrain</div>'

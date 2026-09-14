@@ -62,9 +62,21 @@ def test_un_cout_inconnu_n_est_jamais_affiche_comme_nul():
     assert demo.format_cout(0.00066) == "0,0007 €"
 
 
-def test_le_resume_ignore_la_reference_deterministe(tmp_path):
-    (tmp_path / "2026-09-10-1449.json").write_text(json.dumps({"fournisseur": "groq", "exactitude": 0.8}))
-    (tmp_path / "2026-09-14-0900.json").write_text(json.dumps({"fournisseur": "heuristique", "exactitude": 0.7}))
-    (tmp_path / "2026-09-14-1000.json").write_text("{pas du json")
+def _rapport(dossier, nom, **champs):
+    (dossier / f"{nom}.json").write_text(json.dumps(champs))
+
+
+def test_le_resume_ne_retient_qu_un_rapport_multi_passes_sans_pannes(tmp_path):
+    _rapport(tmp_path, "2026-09-10-1449", fournisseur="groq", passes=5, erreurs_fournisseur=0.0, exactitude=0.8)
+    _rapport(tmp_path, "2026-09-14-0840", fournisseur="groq", passes=1, erreurs_fournisseur=0.0, exactitude=0.85)
+    _rapport(tmp_path, "2026-09-14-0900", fournisseur="heuristique", passes=5, exactitude=0.7)
+    _rapport(tmp_path, "2026-09-14-1228", fournisseur="groq", passes=5, erreurs_fournisseur=0.7, exactitude=0.275)
+    (tmp_path / "2026-09-14-1300.json").write_text("{pas du json")
     assert demo.resume_banc(tmp_path)["exactitude"] == 0.8
     assert demo.resume_banc(tmp_path / "vide") is None
+
+
+def test_un_quota_depasse_est_reconnu():
+    assert demo.quota_fournisseur_atteint("RateLimitError: Error code: 429 - tokens per day")
+    assert not demo.quota_fournisseur_atteint("APIConnectionError: timeout")
+    assert not demo.quota_fournisseur_atteint(None)
