@@ -172,10 +172,17 @@ if "dernier" in st.session_state:
     st.markdown(demo.texte(reponse.question, "es-question"), unsafe_allow_html=True)
 
     if demo.quota_fournisseur_atteint(reponse.provider_error):
+        nature, delai = demo.lecture_quota(reponse.provider_error)
+        attente = f" Délai annoncé par le fournisseur : {delai}." if delai else ""
+        if nature == "jour":
+            cause = "Le quota gratuit du modèle est atteint pour aujourd'hui"
+        elif nature == "minute":
+            cause = "Trop de questions en une minute pour le quota gratuit du modèle"
+        else:
+            cause = "Le fournisseur limite les requêtes en ce moment"
         st.info(
-            "Le quota gratuit du modèle est atteint pour aujourd'hui : le fournisseur a refusé "
-            "la question, l'agent n'a donc rien répondu. Ce n'est pas compté comme une erreur de "
-            "l'agent. Le quota se libère sur une fenêtre glissante de 24 heures."
+            f"{cause} : il a refusé la question, l'agent n'a donc rien répondu. Ce n'est pas "
+            f"compté comme une erreur de l'agent.{attente} (limite : {nature})"
         )
 
     if question is None:

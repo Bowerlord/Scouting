@@ -341,6 +341,16 @@ strong, b { font-weight: 600 !important; }
     min-height: 3.6rem;
 }
 
+/* La version de Streamlit Cloud coupe le libelle sur une ligne avec des points
+   de suspension. Une question tronquee ne se lit pas : on la laisse passer a la
+   ligne. Invisible en local, ou la version installee n'imposait pas nowrap. */
+.main .stButton button p, [data-testid="stMain"] .stButton button p {
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    text-align: left;
+}
+
 .main .stButton button:hover, [data-testid="stMain"] .stButton button:hover {
     border-color: __HAIRLINE_FORTE__;
     background: __SURFACE_HAUTE__;
