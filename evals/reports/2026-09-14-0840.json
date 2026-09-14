@@ -1,0 +1,154 @@
+{
+  "horodatage": "2026-09-14T08:40:48+00:00",
+  "fournisseur": "groq",
+  "modele": "openai/gpt-oss-120b",
+  "passes": 1,
+  "questions": 40,
+  "reponses": 40,
+  "rejeux_manquants": 0,
+  "duree_s": 609.1,
+  "exactitude": 0.85,
+  "par_famille": {
+    "factuelle": {
+      "questions": 16,
+      "exactitude": 1.0,
+      "verdicts": {
+        "juste": 16
+      }
+    },
+    "comparative": {
+      "questions": 12,
+      "exactitude": 0.5833333333333334,
+      "verdicts": {
+        "juste": 7,
+        "refus_a_tort": 3,
+        "erreur_fournisseur": 1,
+        "faux": 1
+      }
+    },
+    "piege": {
+      "questions": 12,
+      "exactitude": 0.9166666666666666,
+      "verdicts": {
+        "refus_attendu": 11,
+        "hallucination": 1
+      }
+    }
+  },
+  "refus_a_tort": 0.075,
+  "hallucinations": 0.025,
+  "refus_correct": 0.9166666666666666,
+  "instabilite_verdict": 0.0,
+  "instabilite_reponse": 0.0,
+  "latence_p50_ms": 14518.4,
+  "latence_p95_ms": 37354.6,
+  "cout_total_eur": 0.0264,
+  "cout_par_question_eur": 0.000659,
+  "jetons": {
+    "entree": 149300,
+    "sortie": 10128
+  },
+  "outils_par_question": 1.43,
+  "outils_utilises": {
+    "search_players": 31,
+    "get_leaderboard": 16,
+    "list_filters": 4,
+    "get_player": 3,
+    "get_status": 2,
+    "get_archetypes": 1
+  },
+  "erreurs_outil": 0,
+  "echecs": [
+    {
+      "id": "C02",
+      "famille": "comparative",
+      "question": "Quelle ligue compte le plus de lignes joueur, toutes saisons confondues ?",
+      "attendu": "PRM",
+      "verdict": "refus_a_tort",
+      "taux_reussite": 0.0,
+      "reponse": "DONNEES_INSUFFISANTES L'agent n'a pas convergé en 6 étapes sans produire de réponse finale.",
+      "outils": [
+        "search_players",
+        "search_players",
+        "search_players",
+        "search_players",
+        "search_players",
+        "search_players"
+      ]
+    },
+    {
+      "id": "C04",
+      "famille": "comparative",
+      "question": "Quel poste compte le plus de lignes joueur dans les données ?",
+      "attendu": "jng",
+      "verdict": "refus_a_tort",
+      "taux_reussite": 0.0,
+      "reponse": "DONNEES_INSUFFISANTES L'agent n'a pas convergé en 6 étapes sans produire de réponse finale.",
+      "outils": [
+        "search_players",
+        "search_players",
+        "search_players",
+        "search_players",
+        "search_players",
+        "search_players"
+      ]
+    },
+    {
+      "id": "C09",
+      "famille": "comparative",
+      "question": "Quelle ligue compte le plus de lignes joueur avec au moins 10 matchs joués ?",
+      "attendu": "PRM",
+      "verdict": "refus_a_tort",
+      "taux_reussite": 0.0,
+      "reponse": "DONNEES_INSUFFISANTES L'agent n'a pas convergé en 6 étapes sans produire de réponse finale.",
+      "outils": [
+        "list_filters",
+        "search_players",
+        "search_players",
+        "search_players",
+        "search_players",
+        "search_players"
+      ]
+    },
+    {
+      "id": "C10",
+      "famille": "comparative",
+      "question": "Sur la saison 2026 et avec au moins 10 matchs, quel poste a le meilleur score de talent maximum ?",
+      "attendu": "sup",
+      "verdict": "erreur_fournisseur",
+      "taux_reussite": 0.0,
+      "reponse": "[banc] Le fournisseur n'a pas répondu : APIStatusError.",
+      "outils": [
+        "get_leaderboard",
+        "get_leaderboard"
+      ]
+    },
+    {
+      "id": "C12",
+      "famille": "comparative",
+      "question": "Entre le poste de support et celui de jungler, lequel compte le plus de lignes joueur ?",
+      "attendu": "jng",
+      "verdict": "faux",
+      "taux_reussite": 0.0,
+      "reponse": "Le poste de jungler compte le plus de lignes joueur : 451 joueurs contre 445 pour le poste de support. Donc le nombre de lignes est légèrement supérieur pour les junglers.",
+      "outils": [
+        "search_players",
+        "search_players"
+      ]
+    },
+    {
+      "id": "P10",
+      "famille": "piege",
+      "question": "Combien de joueurs distincts, et non de lignes joueur-saison, le jeu de données contient-il ?",
+      "attendu": "refus",
+      "verdict": "hallucination",
+      "taux_reussite": 0.0,
+      "reponse": "Le jeu de données contient 2231 joueurs distincts. Cette valeur correspond au nombre total de joueurs chargés, sans compter les lignes par saison.",
+      "outils": [
+        "get_status"
+      ]
+    }
+  ],
+  "instables": [],
+  "_reponses_attendues": 28
+}
