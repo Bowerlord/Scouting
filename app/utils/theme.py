@@ -311,6 +311,126 @@ strong, b { font-weight: 600 !important; }
     border-color: __HAIRLINE_FORTE__;
     font-size: 0.82rem;
 }
+
+/* ── Page Agent ───────────────────────────────────────────────────────────── */
+/* L'element signature de la page : la reponse de l'agent posee contre la
+   verite terrain, separees par un filet vertical. Le verdict se lit en couleur
+   douce (positif / negatif du theme), jamais avec l'accent, qui reste reserve
+   au marqueur LEC. */
+
+.es-famille {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.64rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: __TEXTE_FAIBLE__;
+    border-bottom: 1px solid __HAIRLINE__;
+    padding-bottom: 0.3rem;
+    margin-bottom: 0.4rem;
+}
+
+.main .stButton button, [data-testid="stMain"] .stButton button {
+    background: __SURFACE__;
+    border: 1px solid __HAIRLINE__;
+    border-radius: 3px;
+    color: __TEXTE__;
+    font-size: 0.84rem;
+    text-align: left;
+    justify-content: flex-start;
+    line-height: 1.35;
+    min-height: 3.6rem;
+}
+
+.main .stButton button:hover, [data-testid="stMain"] .stButton button:hover {
+    border-color: __HAIRLINE_FORTE__;
+    background: __SURFACE_HAUTE__;
+    color: __TEXTE__;
+}
+
+.es-face {
+    display: grid;
+    grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+    border-top: 1px solid __HAIRLINE_FORTE__;
+    border-bottom: 1px solid __HAIRLINE_FORTE__;
+    margin-top: 1.6rem;
+}
+
+.es-face > div { padding: 0.9rem 1rem 1rem 0; }
+.es-face > div + div { padding-left: 1.2rem; border-left: 1px solid __HAIRLINE__; }
+
+.es-question {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 1.35rem;
+    font-weight: 500;
+    color: __TEXTE__;
+    margin-top: 1.4rem;
+    line-height: 1.2;
+}
+
+.es-reponse { color: __TEXTE__; font-size: 1rem; line-height: 1.6; margin-top: 0.5rem; }
+
+.es-verite {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.05rem;
+    font-weight: 500;
+    color: __TEXTE__;
+    margin-top: 0.5rem;
+}
+
+.es-verite-note { color: __TEXTE_FAIBLE__; font-size: 0.84rem; line-height: 1.5; margin-top: 0.4rem; }
+
+.es-verdict {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.4rem 1.2rem;
+    padding: 0.7rem 0;
+    border-bottom: 1px solid __HAIRLINE__;
+}
+
+.es-verdict-libelle {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.es-verdict.bon .es-verdict-libelle { color: __POSITIF__; }
+.es-verdict.mauvais .es-verdict-libelle { color: __NEGATIF__; }
+.es-verdict.neutre .es-verdict-libelle { color: __TEXTE_FAIBLE__; }
+
+.es-verdict-mesures {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.74rem;
+    color: __TEXTE_FAIBLE__;
+}
+
+.es-trace {
+    display: grid;
+    grid-template-columns: 1.6rem 10rem minmax(0, 1fr) 4.5rem;
+    column-gap: 0.7rem;
+    align-items: baseline;
+    padding: 0.3rem 0.55rem;
+    border-bottom: 1px solid __HAIRLINE__;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.76rem;
+}
+
+.es-trace-outil { color: __TEXTE__; }
+.es-trace-args { color: __TEXTE_FAIBLE__; overflow-wrap: anywhere; }
+.es-trace-duree { color: __TEXTE_FAIBLE__; text-align: right; }
+.es-trace-erreur { color: __NEGATIF__; margin-left: 0.6rem; }
+
+@media (max-width: 640px) {
+    .es-face { grid-template-columns: 1fr; }
+    .es-face > div + div { padding-left: 0; border-left: 0; border-top: 1px solid __HAIRLINE__; }
+    .es-trace { grid-template-columns: 1.2rem minmax(0, 1fr) 3.8rem; }
+    /* Sans placement explicite, la duree retombait dans la colonne du rang, large
+       de 1,2rem, et s'ecrivait une lettre par ligne. */
+    .es-trace-duree { grid-column: 3; grid-row: 1; }
+    .es-trace-args { grid-column: 2 / 4; grid-row: 2; }
+}
 </style>
 """
 
@@ -327,6 +447,8 @@ def appliquer() -> None:
         "__TEXTE_FAIBLE__": COULEURS["texte_faible"],
         "__TEXTE_TRES_FAIBLE__": COULEURS["texte_tres_faible"],
         "__ACCENT__": COULEURS["accent"],
+        "__POSITIF__": COULEURS["positif"],
+        "__NEGATIF__": COULEURS["negatif"],
     }.items():
         css = css.replace(cle, valeur)
     st.markdown(css, unsafe_allow_html=True)

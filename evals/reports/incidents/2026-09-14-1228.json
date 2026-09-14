@@ -1,0 +1,679 @@
+{
+  "horodatage": "2026-09-14T12:28:05+00:00",
+  "fournisseur": "groq",
+  "modele": "openai/gpt-oss-120b",
+  "passes": 5,
+  "questions": 40,
+  "reponses": 200,
+  "rejeux_manquants": 0,
+  "duree_s": 1051.8,
+  "exactitude": 0.275,
+  "par_famille": {
+    "factuelle": {
+      "questions": 16,
+      "exactitude": 0.3625,
+      "verdicts": {
+        "juste": 29,
+        "erreur_fournisseur": 48,
+        "faux": 3
+      }
+    },
+    "comparative": {
+      "questions": 12,
+      "exactitude": 0.26666666666666666,
+      "verdicts": {
+        "juste": 16,
+        "erreur_fournisseur": 44
+      }
+    },
+    "piege": {
+      "questions": 12,
+      "exactitude": 0.16666666666666666,
+      "verdicts": {
+        "refus_attendu": 10,
+        "erreur_fournisseur": 48,
+        "hallucination": 2
+      }
+    }
+  },
+  "refus_a_tort": 0.0,
+  "hallucinations": 0.01,
+  "non_convergence": 0.0,
+  "erreurs_fournisseur": 0.7,
+  "refus_correct": 0.16666666666666666,
+  "instabilite_verdict": 1.0,
+  "instabilite_reponse": 0.95,
+  "latence_p50_ms": 30.8,
+  "latence_p95_ms": 26355.3,
+  "cout_total_eur": 0.0465,
+  "cout_par_question_eur": 0.000233,
+  "jetons": {
+    "entree": 265316,
+    "sortie": 17449
+  },
+  "outils_par_question": 0.49,
+  "outils_utilises": {
+    "search_players": 54,
+    "get_leaderboard": 28,
+    "list_filters": 8,
+    "get_player": 4,
+    "get_status": 3,
+    "get_archetypes": 1
+  },
+  "erreurs_outil": 0,
+  "echecs": [
+    {
+      "id": "F01",
+      "famille": "factuelle",
+      "question": "Quel joueur a le score de talent le plus élevé, en ne gardant que ceux qui ont au moins 10 matchs ?",
+      "attendu": "zoelys",
+      "verdict": "erreur_fournisseur",
+      "taux_reussite": 0.4,
+      "reponse": "[banc] Le fournisseur n'a pas répondu : RateLimitError.",
+      "outils": []
+    },
+    {
+      "id": "F02",
+      "famille": "factuelle",
+      "question": "Qui est le meilleur mid de LFL en 2026 selon le score de talent, avec au moins 10 matchs ?",
+      "attendu": "omon",
+      "verdict": "erreur_fournisseur",
+      "taux_reussite": 0.4,
+      "reponse": "[banc] Le fournisseur n'a pas répondu : RateLimitError.",
+      "outils": []
+    },
+    {
+      "id": "F03",
+      "famille": "factuelle",
+      "question": "Combien de ligues différentes sont couvertes par ce jeu de données ?",
+      "attendu": 6.0,
+      "verdict": "erreur_fournisseur",
+      "taux_reussite": 0.0,
+      "reponse": "[banc] Le fournisseur n'a pas répondu : RateLimitError.",
+      "outils": []
+    },
+    {
+      "id": "F04",
+      "famille": "factuelle",
+      "question": "Quelle est la saison la plus récente présente dans les données ?",
+      "attendu": 2026.0,
+      "verdict": "erreur_fournisseur",
+      "taux_reussite": 0.4,
+      "reponse": "[banc] Le fournisseur n'a pas répondu : RateLimitError.",
+      "outils": []
+    },
+    {
+      "id": "F05",
+      "famille": "factuelle",
+      "question": "Combien de lignes joueur les données comptent-elles pour la LFL sur la saison 2026 ?",
+      "attendu": 83.0,
+      "verdict": "erreur_fournisseur",
+      "taux_reussite": 0.4,
+      "reponse": "[banc] Le fournisseur n'a pas répondu : RateLimitError.",
+      "outils": []
+    },
+    {
+      "id": "F06",
+      "famille": "factuelle",
+      "question": "Combien de lignes joueur la ligue TCL compte-t-elle en tout ?",
+      "attendu": 352.0,
+      "verdict": "erreur_fournisseur",
+      "taux_reussite": 0.4,
+      "reponse": "[banc] Le fournisseur n'a pas répondu : RateLimitError.",
+      "outils": []
+    },
+    {
+      "id": "F07",
+      "famille": "factuelle",
+      "question": "Quel est le meilleur top de la ligue PRM en 2025, avec au moins 10 matchs ?",
+      "attendu": "shelfmade",
+      "verdict": "erreur_fournisseur",
+      "taux_reussite": 0.4,
+      "reponse": "[banc] Le fournisseur n'a pas répondu : RateLimitError.",
+      "outils": []
+    },
+    {
+      "id": "F08",
+      "famille": "factuelle",
+      "question": "Quel est le meilleur joueur de la ligue TCL toutes saisons confondues, avec au moins 10 matchs ?",
+      "attendu": "aytekn",
+      "verdict": "erreur_fournisseur",
+      "taux_reussite": 0.4,
+      "reponse": "[banc] Le fournisseur n'a pas répondu : RateLimitError.",
+      "outils": []
+    },
+    {
+      "id": "F09",
+      "famille": "factuelle",
+      "question": "Quels sont les cinq meilleurs joueurs toutes ligues confondues, avec au moins 10 matchs ?",
+      "attendu": [
+        "zoelys",
+        "omon",
+        "carlsen",
+        "harpoon",
+        "thayger"
+      ],
+      "verdict": "erreur_fournisseur",
+      "taux_reussite": 0.4,
+      "reponse": "[banc] Le fournisseur n'a pas répondu : RateLimitError.",
+      "outils": []
+    },
+    {
+      "id": "F10",
+      "famille": "factuelle",
+      "question": "Combien de postes différents existent dans les données ?",
+      "attendu": 5.0,
+      "verdict": "erreur_fournisseur",
+      "taux_reussite": 0.2,
+      "reponse": "[banc] Le fournisseur n'a pas répondu : RateLimitError.",
+      "outils": []
+    },
+    {
+      "id": "F11",
+      "famille": "factuelle",
+      "question": "Quel est le meilleur jungler de LFL2, toutes saisons, avec au moins 10 matchs ?",
+      "attendu": "frost",
+      "verdict": "erreur_fournisseur",
+      "taux_reussite": 0.4,
+      "reponse": "[banc] Le fournisseur n'a pas répondu : RateLimitError.",
+      "outils": []
+    },
+    {
+      "id": "F12",
+      "famille": "factuelle",
+      "question": "Combien de lignes joueur la ligue NLC compte-t-elle en tout ?",
+      "attendu": 473.0,
+      "verdict": "erreur_fournisseur",
+      "taux_reussite": 0.4,
+      "reponse": "[banc] Le fournisseur n'a pas répondu : RateLimitError.",
+      "outils": []
+    },
+    {
+      "id": "F13",
+      "famille": "factuelle",
+      "question": "Quel est le meilleur support de LVP SL en 2025, avec au moins 10 matchs ?",
+      "attendu": "whiteinn",
+      "verdict": "erreur_fournisseur",
+      "taux_reussite": 0.4,
+      "reponse": "[banc] Le fournisseur n'a pas répondu : RateLimitError.",
+      "outils": []
+    },
+    {
+      "id": "F14",
+      "famille": "factuelle",
+      "question": "Quels sont les trois meilleurs bot laners de 2026, toutes ligues, avec au moins 10 matchs ?",
+      "attendu": [
+        "harpoon",
+        "axelent",
+        "aetinoth"
+      ],
+      "verdict": "erreur_fournisseur",
+      "taux_reussite": 0.4,
+      "reponse": "[banc] Le fournisseur n'a pas répondu : RateLimitError.",
+      "outils": []
+    },
+    {
+      "id": "F15",
+      "famille": "factuelle",
+      "question": "Combien de lignes joueur le jeu de données contient-il au total ?",
+      "attendu": 2231.0,
+      "verdict": "erreur_fournisseur",
+      "taux_reussite": 0.4,
+      "reponse": "[banc] Le fournisseur n'a pas répondu : RateLimitError.",
+      "outils": []
+    },
+    {
+      "id": "F16",
+      "famille": "factuelle",
+      "question": "Quel est le meilleur joueur de PRM toutes saisons et tous postes, avec au moins 10 matchs ?",
+      "attendu": "irrelevant",
+      "verdict": "erreur_fournisseur",
+      "taux_reussite": 0.4,
+      "reponse": "[banc] Le fournisseur n'a pas répondu : RateLimitError.",
+      "outils": []
+    },
+    {
+      "id": "C01",
+      "famille": "comparative",
+      "question": "Entre la LFL et la LFL2, laquelle compte le plus de lignes joueur en 2026 ?",
+      "attendu": "LFL",
+      "verdict": "erreur_fournisseur",
+      "taux_reussite": 0.4,
+      "reponse": "[banc] Le fournisseur n'a pas répondu : RateLimitError.",
+      "outils": []
+    },
+    {
+      "id": "C02",
+      "famille": "comparative",
+      "question": "Quelle ligue compte le plus de lignes joueur, toutes saisons confondues ?",
+      "attendu": "PRM",
+      "verdict": "erreur_fournisseur",
+      "taux_reussite": 0.4,
+      "reponse": "[banc] Le fournisseur n'a pas répondu : RateLimitError.",
+      "outils": []
+    },
+    {
+      "id": "C03",
+      "famille": "comparative",
+      "question": "Quelle saison compte le plus de lignes joueur ?",
+      "attendu": 2025.0,
+      "verdict": "erreur_fournisseur",
+      "taux_reussite": 0.4,
+      "reponse": "[banc] Le fournisseur n'a pas répondu : RateLimitError.",
+      "outils": []
+    },
+    {
+      "id": "C04",
+      "famille": "comparative",
+      "question": "Quel poste compte le plus de lignes joueur dans les données ?",
+      "attendu": "bot",
+      "verdict": "erreur_fournisseur",
+      "taux_reussite": 0.4,
+      "reponse": "[banc] Le fournisseur n'a pas répondu : RateLimitError.",
+      "outils": []
+    },
+    {
+      "id": "C05",
+      "famille": "comparative",
+      "question": "Entre la LFL et la PRM, laquelle compte le plus de lignes joueur sur la saison 2025 ?",
+      "attendu": "PRM",
+      "verdict": "erreur_fournisseur",
+      "taux_reussite": 0.2,
+      "reponse": "[banc] Le fournisseur n'a pas répondu : RateLimitError.",
+      "outils": []
+    },
+    {
+      "id": "C06",
+      "famille": "comparative",
+      "question": "En 2026 et avec au moins 10 matchs, le meilleur mid de LFL a-t-il un meilleur score de talent que le meilleur mid de PRM ? Réponds par le nom de la ligue gagnante.",
+      "attendu": "LFL",
+      "verdict": "erreur_fournisseur",
+      "taux_reussite": 0.2,
+      "reponse": "[banc] Le fournisseur n'a pas répondu : RateLimitError.",
+      "outils": []
+    },
+    {
+      "id": "C07",
+      "famille": "comparative",
+      "question": "Parmi les archétypes de jeu du poste mid, quel numéro de cluster affiche le meilleur taux de promotion en LEC ?",
+      "attendu": 2.0,
+      "verdict": "erreur_fournisseur",
+      "taux_reussite": 0.2,
+      "reponse": "[banc] Le fournisseur n'a pas répondu : RateLimitError.",
+      "outils": []
+    },
+    {
+      "id": "C08",
+      "famille": "comparative",
+      "question": "Entre la NLC et la TCL, laquelle a le meilleur score de talent maximum en ne gardant que les joueurs à 10 matchs ou plus ?",
+      "attendu": "TCL",
+      "verdict": "erreur_fournisseur",
+      "taux_reussite": 0.2,
+      "reponse": "[banc] Le fournisseur n'a pas répondu : RateLimitError.",
+      "outils": []
+    },
+    {
+      "id": "C09",
+      "famille": "comparative",
+      "question": "Quelle ligue compte le plus de lignes joueur avec au moins 10 matchs joués ?",
+      "attendu": "PRM",
+      "verdict": "erreur_fournisseur",
+      "taux_reussite": 0.2,
+      "reponse": "[banc] Le fournisseur n'a pas répondu : RateLimitError.",
+      "outils": []
+    },
+    {
+      "id": "C10",
+      "famille": "comparative",
+      "question": "Sur la saison 2026 et avec au moins 10 matchs, quel poste a le meilleur score de talent maximum ?",
+      "attendu": "sup",
+      "verdict": "erreur_fournisseur",
+      "taux_reussite": 0.2,
+      "reponse": "[banc] Le fournisseur n'a pas répondu : RateLimitError.",
+      "outils": []
+    },
+    {
+      "id": "C11",
+      "famille": "comparative",
+      "question": "Entre 2024 et 2025, quelle saison compte le plus de lignes joueur ?",
+      "attendu": 2025.0,
+      "verdict": "erreur_fournisseur",
+      "taux_reussite": 0.2,
+      "reponse": "[banc] Le fournisseur n'a pas répondu : RateLimitError.",
+      "outils": []
+    },
+    {
+      "id": "C12",
+      "famille": "comparative",
+      "question": "Entre le poste de support et celui de jungler, lequel compte le plus de lignes joueur ?",
+      "attendu": "jng",
+      "verdict": "erreur_fournisseur",
+      "taux_reussite": 0.2,
+      "reponse": "[banc] Le fournisseur n'a pas répondu : RateLimitError.",
+      "outils": []
+    },
+    {
+      "id": "P01",
+      "famille": "piege",
+      "question": "Qui est le meilleur mid de LEC en 2026 ?",
+      "attendu": "refus",
+      "verdict": "erreur_fournisseur",
+      "taux_reussite": 0.2,
+      "reponse": "[banc] Le fournisseur n'a pas répondu : RateLimitError.",
+      "outils": []
+    },
+    {
+      "id": "P02",
+      "famille": "piege",
+      "question": "Quel âge a le joueur omon ?",
+      "attendu": "refus",
+      "verdict": "erreur_fournisseur",
+      "taux_reussite": 0.2,
+      "reponse": "[banc] Le fournisseur n'a pas répondu : RateLimitError.",
+      "outils": []
+    },
+    {
+      "id": "P03",
+      "famille": "piege",
+      "question": "Combien gagne le joueur zoelys par an ?",
+      "attendu": "refus",
+      "verdict": "erreur_fournisseur",
+      "taux_reussite": 0.2,
+      "reponse": "[banc] Le fournisseur n'a pas répondu : RateLimitError.",
+      "outils": []
+    },
+    {
+      "id": "P04",
+      "famille": "piege",
+      "question": "Quel champion le joueur carlsen joue-t-il le plus souvent ?",
+      "attendu": "refus",
+      "verdict": "erreur_fournisseur",
+      "taux_reussite": 0.2,
+      "reponse": "[banc] Le fournisseur n'a pas répondu : RateLimitError.",
+      "outils": []
+    },
+    {
+      "id": "P05",
+      "famille": "piege",
+      "question": "Quels sont les meilleurs joueurs de la saison 2023 ?",
+      "attendu": "refus",
+      "verdict": "erreur_fournisseur",
+      "taux_reussite": 0.2,
+      "reponse": "[banc] Le fournisseur n'a pas répondu : RateLimitError.",
+      "outils": []
+    },
+    {
+      "id": "P06",
+      "famille": "piege",
+      "question": "Quel est le score de talent de Faker ?",
+      "attendu": "refus",
+      "verdict": "erreur_fournisseur",
+      "taux_reussite": 0.2,
+      "reponse": "[banc] Le fournisseur n'a pas répondu : RateLimitError.",
+      "outils": []
+    },
+    {
+      "id": "P07",
+      "famille": "piege",
+      "question": "De quelle nationalité est le meilleur joueur de LFL ?",
+      "attendu": "refus",
+      "verdict": "erreur_fournisseur",
+      "taux_reussite": 0.2,
+      "reponse": "[banc] Le fournisseur n'a pas répondu : RateLimitError.",
+      "outils": []
+    },
+    {
+      "id": "P08",
+      "famille": "piege",
+      "question": "Combien de joueurs au total ont été promus en LEC d'après ces données ?",
+      "attendu": "refus",
+      "verdict": "erreur_fournisseur",
+      "taux_reussite": 0.2,
+      "reponse": "[banc] Le fournisseur n'a pas répondu : RateLimitError.",
+      "outils": []
+    },
+    {
+      "id": "P09",
+      "famille": "piege",
+      "question": "Quel est le KDA moyen du joueur omon ?",
+      "attendu": "refus",
+      "verdict": "erreur_fournisseur",
+      "taux_reussite": 0.2,
+      "reponse": "[banc] Le fournisseur n'a pas répondu : RateLimitError.",
+      "outils": []
+    },
+    {
+      "id": "P10",
+      "famille": "piege",
+      "question": "Combien de joueurs distincts, et non de lignes joueur-saison, le jeu de données contient-il ?",
+      "attendu": "refus",
+      "verdict": "erreur_fournisseur",
+      "taux_reussite": 0.0,
+      "reponse": "[banc] Le fournisseur n'a pas répondu : RateLimitError.",
+      "outils": []
+    },
+    {
+      "id": "P11",
+      "famille": "piege",
+      "question": "Quels joueurs de LCK figurent dans le top 10 du classement ?",
+      "attendu": "refus",
+      "verdict": "erreur_fournisseur",
+      "taux_reussite": 0.2,
+      "reponse": "[banc] Le fournisseur n'a pas répondu : RateLimitError.",
+      "outils": []
+    },
+    {
+      "id": "P12",
+      "famille": "piege",
+      "question": "Dans quelle équipe le joueur zoelys jouera-t-il la saison prochaine ?",
+      "attendu": "refus",
+      "verdict": "erreur_fournisseur",
+      "taux_reussite": 0.0,
+      "reponse": "[banc] Le fournisseur n'a pas répondu : RateLimitError.",
+      "outils": []
+    }
+  ],
+  "instables": [
+    {
+      "id": "F01",
+      "famille": "factuelle",
+      "taux_reussite": 0.4
+    },
+    {
+      "id": "F02",
+      "famille": "factuelle",
+      "taux_reussite": 0.4
+    },
+    {
+      "id": "F03",
+      "famille": "factuelle",
+      "taux_reussite": 0.0
+    },
+    {
+      "id": "F04",
+      "famille": "factuelle",
+      "taux_reussite": 0.4
+    },
+    {
+      "id": "F05",
+      "famille": "factuelle",
+      "taux_reussite": 0.4
+    },
+    {
+      "id": "F06",
+      "famille": "factuelle",
+      "taux_reussite": 0.4
+    },
+    {
+      "id": "F07",
+      "famille": "factuelle",
+      "taux_reussite": 0.4
+    },
+    {
+      "id": "F08",
+      "famille": "factuelle",
+      "taux_reussite": 0.4
+    },
+    {
+      "id": "F09",
+      "famille": "factuelle",
+      "taux_reussite": 0.4
+    },
+    {
+      "id": "F10",
+      "famille": "factuelle",
+      "taux_reussite": 0.2
+    },
+    {
+      "id": "F11",
+      "famille": "factuelle",
+      "taux_reussite": 0.4
+    },
+    {
+      "id": "F12",
+      "famille": "factuelle",
+      "taux_reussite": 0.4
+    },
+    {
+      "id": "F13",
+      "famille": "factuelle",
+      "taux_reussite": 0.4
+    },
+    {
+      "id": "F14",
+      "famille": "factuelle",
+      "taux_reussite": 0.4
+    },
+    {
+      "id": "F15",
+      "famille": "factuelle",
+      "taux_reussite": 0.4
+    },
+    {
+      "id": "F16",
+      "famille": "factuelle",
+      "taux_reussite": 0.4
+    },
+    {
+      "id": "C01",
+      "famille": "comparative",
+      "taux_reussite": 0.4
+    },
+    {
+      "id": "C02",
+      "famille": "comparative",
+      "taux_reussite": 0.4
+    },
+    {
+      "id": "C03",
+      "famille": "comparative",
+      "taux_reussite": 0.4
+    },
+    {
+      "id": "C04",
+      "famille": "comparative",
+      "taux_reussite": 0.4
+    },
+    {
+      "id": "C05",
+      "famille": "comparative",
+      "taux_reussite": 0.2
+    },
+    {
+      "id": "C06",
+      "famille": "comparative",
+      "taux_reussite": 0.2
+    },
+    {
+      "id": "C07",
+      "famille": "comparative",
+      "taux_reussite": 0.2
+    },
+    {
+      "id": "C08",
+      "famille": "comparative",
+      "taux_reussite": 0.2
+    },
+    {
+      "id": "C09",
+      "famille": "comparative",
+      "taux_reussite": 0.2
+    },
+    {
+      "id": "C10",
+      "famille": "comparative",
+      "taux_reussite": 0.2
+    },
+    {
+      "id": "C11",
+      "famille": "comparative",
+      "taux_reussite": 0.2
+    },
+    {
+      "id": "C12",
+      "famille": "comparative",
+      "taux_reussite": 0.2
+    },
+    {
+      "id": "P01",
+      "famille": "piege",
+      "taux_reussite": 0.2
+    },
+    {
+      "id": "P02",
+      "famille": "piege",
+      "taux_reussite": 0.2
+    },
+    {
+      "id": "P03",
+      "famille": "piege",
+      "taux_reussite": 0.2
+    },
+    {
+      "id": "P04",
+      "famille": "piege",
+      "taux_reussite": 0.2
+    },
+    {
+      "id": "P05",
+      "famille": "piege",
+      "taux_reussite": 0.2
+    },
+    {
+      "id": "P06",
+      "famille": "piege",
+      "taux_reussite": 0.2
+    },
+    {
+      "id": "P07",
+      "famille": "piege",
+      "taux_reussite": 0.2
+    },
+    {
+      "id": "P08",
+      "famille": "piege",
+      "taux_reussite": 0.2
+    },
+    {
+      "id": "P09",
+      "famille": "piege",
+      "taux_reussite": 0.2
+    },
+    {
+      "id": "P10",
+      "famille": "piege",
+      "taux_reussite": 0.0
+    },
+    {
+      "id": "P11",
+      "famille": "piege",
+      "taux_reussite": 0.2
+    },
+    {
+      "id": "P12",
+      "famille": "piege",
+      "taux_reussite": 0.0
+    }
+  ],
+  "_reponses_attendues": 28
+}

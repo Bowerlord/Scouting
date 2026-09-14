@@ -7,6 +7,7 @@
 
 ### 👉 [Tester le dashboard en ligne](https://scouting-lol-erl.streamlit.app/)
 ### 🔌 [Interroger l'API](https://scouting-api-7750158787.europe-west1.run.app/docs)
+### 🤖 [Poser une question à l'agent, et voir s'il a raison](https://scouting-lol-erl.streamlit.app/Agent)
 
 L'API est déployée sur **Google Cloud Run**, région `europe-west1`. Elle sert les mêmes résultats que le dashboard, en HTTP, à n'importe quel client :
 
@@ -14,7 +15,7 @@ L'API est déployée sur **Google Cloud Run**, région `europe-west1`. Elle sert
 curl https://scouting-api-7750158787.europe-west1.run.app/leaderboard?position=mid\&limit=3
 ```
 
-Trois vues interactives : **Leaderboard** (classement des 3 098 joueurs par talent score), **Profil Joueur** (radar de performance et archétype ML) et **Scout Mode** (shortlist par critères et recherche de joueurs similaires par clustering).
+Quatre vues interactives : **Leaderboard** (classement des 3 098 joueurs par talent score), **Profil Joueur** (radar de performance et archétype ML), **Scout Mode** (shortlist par critères et recherche de joueurs similaires par clustering) et **Agent** (une question en langage naturel, la réponse du modèle posée contre la vérité calculée en SQL, avec son verdict).
 
 Ce projet est un outil de scouting data-driven pour les ligues régionales européennes de League of Legends. L'objectif : analyser les performances des joueurs des **ERL** (European Regional Leagues) et estimer lesquels ont le potentiel d'évoluer en **LEC**, la division supérieure.
 
@@ -390,36 +391,54 @@ Le job Docker ne se contente pas de construire l'image : un build qui réussit n
 
 **Ce qui compte ici n'est pas l'agent.** Un agent qui interroge une API, tout le
 monde en écrit un. Ce qui est rare, et ce que ce dossier contient, c'est de
-pouvoir dire : *« il se trompe dans 22,5 % des cas, voilà exactement lesquels,
-et voilà pourquoi »*.
+pouvoir dire : *« il se trompe dans 10 % des cas, voilà exactement lesquels,
+et voilà ce que le chiffre ne dit pas encore »*.
 
 ### Les chiffres
 
-*40 questions × 5 passes, dernière exécution du 10 septembre 2026.
-Rapport complet et versionné dans [`evals/reports/`](evals/reports/).*
+*Mesure du 14 septembre 2026, `openai/gpt-oss-120b` via Groq, face à la
+référence déterministe. Rapports dans [`evals/reports/`](evals/reports/).*
 
-| Mesure | Référence déterministe |
-|---|---|
-| **Exactitude globale** | 77,5 % |
-| Exactitude — questions factuelles (16) | 100 % |
-| Exactitude — questions comparatives (12) | 33,3 % |
-| Exactitude — questions pièges (12) | 91,7 % |
-| **Refus à tort** | 2,5 % |
-| **Hallucinations** | 2,5 % |
-| Instabilité du verdict entre passes | 0 % |
-| Latence p50 / p95 | 5 ms / 7 ms |
-| Coût par question | 0 € |
+| Mesure | `gpt-oss-120b` | Référence déterministe |
+|---|---|---|
+| **Exactitude globale** | **90,0 %** | 77,5 % |
+| Exactitude — questions factuelles (16) | 87,5 % | 100 % |
+| Exactitude — questions comparatives (12) | **100 %** | 33,3 % |
+| Exactitude — questions pièges (12) | 83,3 % | 91,7 % |
+| **Refus à tort** | 0 % | 2,5 % |
+| **Hallucinations** | **5,0 %** | 2,5 % |
+| Instabilité du verdict entre passes | 5 % *(sur 20 questions)* | 0 % |
+| Coût par question | 0,0008 € | 0 € |
 
-> ⚠️ **Ces chiffres sont ceux de la référence déterministe, pas d'un modèle de
-> langage.** La référence est un routeur à mots-clés écrit à la main
-> (`agent/baseline.py`), présent pour que le banc tourne en intégration continue
-> sans clé d'API. Elle donne le plancher : un modèle qui ne fait pas mieux que
-> 33 % sur les comparatives ne justifie pas son coût. **Les chiffres d'un vrai
-> modèle restent à mesurer**, avec une seule commande :
+**Ce que le modèle apporte, et ce qu'il coûte.** Il fait sauter le plafond des
+comparatives, de 33 % à 100 % : c'est exactement l'écart que la référence ne
+pouvait pas combler, parce qu'une comparaison demande plusieurs appels d'outils
+puis une mise en regard. Mais il **hallucine deux fois plus** qu'un routeur à
+mots-clés : il invente un nombre de joueurs distincts qu'aucun outil n'expose
+(P10), et l'équipe future d'un joueur (P12). Il rate aussi deux dénombrements
+simples, le nombre de ligues et le nombre de postes (F03, F10). Plus capable et
+moins prudent : sans les douze questions pièges, seul le premier des deux
+constats aurait été visible.
+
+> ⚠️ **Ce que ces chiffres ne sont pas encore.** Cinq passes étaient prévues.
+> Le quota gratuit de Groq (200 000 jetons par jour, par modèle) a lâché au
+> milieu de la deuxième : les passes 3 à 5 ne contiennent que des refus du
+> fournisseur, et le rapport agrégé publiait 27,5 % d'exactitude pour un agent
+> à 90 %. **Il n'est donc pas publié comme mesure.** Le rapport brut est gardé
+> dans [`evals/reports/incidents/`](evals/reports/incidents/), et les chiffres
+> ci-dessus en sont reconstitués : **une passe complète** sur les 40 questions,
+> et **une seconde passe sur les 20 premières**, où une seule question change de
+> verdict (F10). La variance sur cinq passes reste à mesurer, et ce tableau sera
+> remplacé par le rapport complet.
 >
 > ```bash
-> ANTHROPIC_API_KEY=... python -m evals.run --runs 5 --provider anthropic
+> GROQ_API_KEY=... python -m evals.run --runs 5 --provider groq
 > ```
+>
+> L'incident a laissé une règle dans le code : la page Agent du dashboard
+> n'affiche plus que les chiffres d'un rapport à plusieurs passes et à moins de
+> 10 % de pannes du fournisseur. Un rapport noyé de pannes mesure le quota, pas
+> l'agent.
 
 ### Ce que la référence rate, et c'est instructif
 
