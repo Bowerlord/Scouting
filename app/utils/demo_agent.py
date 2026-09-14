@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import html
 import json
+import re
 import threading
 from dataclasses import dataclass, field
 from datetime import date
@@ -159,6 +160,26 @@ def resume_banc(repertoire: Path) -> dict[str, Any] | None:
 def quota_fournisseur_atteint(erreur: str | None) -> bool:
     """Vrai si le fournisseur a refusé pour cause de limite de débit ou de quota."""
     return bool(erreur) and ("429" in erreur or "RateLimit" in erreur or "rate_limit" in erreur)
+
+
+def lecture_quota(erreur: str | None) -> tuple[str, str | None]:
+    """La nature de la limite atteinte (« jour », « minute » ou « inconnue ») et le délai annoncé.
+
+    Relevé le 2026-09-14 en ligne : la page annonçait « quota atteint pour
+    aujourd'hui » pour tout refus de débit, alors qu'une limite par minute se
+    lève en quelques secondes. Seuls la nature et le délai sont extraits : le
+    message brut du fournisseur contient l'identifiant de l'organisation, qui n'a
+    rien à faire sur une page publique.
+    """
+    texte = erreur or ""
+    if "per day" in texte or "(TPD)" in texte or "(RPD)" in texte:
+        nature = "jour"
+    elif "per minute" in texte or "(TPM)" in texte or "(RPM)" in texte:
+        nature = "minute"
+    else:
+        nature = "inconnue"
+    delai = re.search(r"try again in ((?:\d+h)?(?:\d+m)?[\d.]+s)", texte)
+    return nature, re.sub(r"\.\d+s$", "s", delai.group(1)) if delai else None
 
 
 # ── Rendu HTML ────────────────────────────────────────────────────────────────

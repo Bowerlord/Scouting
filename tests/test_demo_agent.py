@@ -76,6 +76,18 @@ def test_le_resume_ne_retient_qu_un_rapport_multi_passes_sans_pannes(tmp_path):
     assert demo.resume_banc(tmp_path / "vide") is None
 
 
+def test_la_nature_du_quota_et_le_delai_sont_lus_sans_recopier_le_message():
+    jour = (
+        "RateLimitError: Error code: 429 - Rate limit reached for model `x` in organization `org_secret` "
+        "on tokens per day (TPD): Limit 200000, Used 198589. Please try again in 4m16.608s."
+    )
+    minute = "RateLimitError: 429 - on tokens per minute (TPM): Limit 8000. Please try again in 1.5s."
+    assert demo.lecture_quota(jour) == ("jour", "4m16s")
+    assert demo.lecture_quota(minute) == ("minute", "1s")
+    assert demo.lecture_quota("RateLimitError: 429") == ("inconnue", None)
+    assert "org_secret" not in "".join(str(v) for v in demo.lecture_quota(jour))
+
+
 def test_un_quota_depasse_est_reconnu():
     assert demo.quota_fournisseur_atteint("RateLimitError: Error code: 429 - tokens per day")
     assert not demo.quota_fournisseur_atteint("APIConnectionError: timeout")
