@@ -41,7 +41,11 @@ LIBELLES_FAMILLE = {
 
 LONGUEUR_MAX_QUESTION = 300
 QUESTIONS_PAR_SESSION = 5
-QUESTIONS_PAR_JOUR = 200
+#: Calé sur le quota gratuit de Groq : 200 000 jetons par jour et par modèle, et
+#: environ 6 500 jetons par question relevés le 2026-09-14 sur qwen3.8-27b.
+#: Au-delà de ~30 questions, c'est le fournisseur qui refuserait ; mieux vaut que
+#: la page dise « limite de la démo » que d'afficher une panne.
+QUESTIONS_PAR_JOUR = 25
 
 #: Chaque verdict du banc, son libellé et sa tonalité. Une non-réponse n'est
 #: ni bonne ni mauvaise : elle est affichée en neutre, comme dans le rapport.

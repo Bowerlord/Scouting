@@ -57,8 +57,13 @@ theme.appliquer()
 
 @st.cache_resource
 def _agent() -> ScoutAgent:
-    fournisseur = "groq" if os.getenv("GROQ_API_KEY") else "heuristique"
-    return ScoutAgent(provider=get_provider(fournisseur))
+    # Le modèle de la démo se règle par secret, séparément de celui du banc.
+    # Relevé le 2026-09-14 : banc et démo partageaient le quota de gpt-oss-120b
+    # chez Groq, et le banc l'a épuisé. Chez Groq le quota est compté par modèle :
+    # un modèle distinct pour la démo lui donne son propre quota, avec la même clé.
+    if not os.getenv("GROQ_API_KEY"):
+        return ScoutAgent(provider=get_provider("heuristique"))
+    return ScoutAgent(provider=get_provider("groq", model=_secret("SCOUTING_LLM_MODEL")))
 
 
 @st.cache_resource
