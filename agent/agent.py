@@ -23,7 +23,11 @@ logger = logging.getLogger(__name__)
 # Au-delà, l'agent tourne en rond. Observé : les boucles infinies viennent
 # presque toujours d'un outil qui renvoie une erreur que le modèle réessaie à
 # l'identique. On coupe, et la trace montre la répétition.
-MAX_STEPS = 6
+#
+# Relevé de 6 à 8 le 2026-09-14. À 6, une stratégie juste ne tenait pas :
+# comparer six ligues demande six appels, puis une étape pour conclure. Trois
+# questions comparatives étaient coupées au moment exact où l'agent avait tout.
+MAX_STEPS = 8
 
 
 @dataclass
@@ -49,6 +53,11 @@ class Answer:
     model: str = ""
     steps: int = 0
     truncated: bool = False
+    #: Renseigné quand le fournisseur lui-même refuse de répondre : schéma
+    #: d'outil rejeté, quota dépassé, coupure réseau. La question est alors
+    #: perdue, mais elle seule. Une exécution de 200 questions ne doit pas
+    #: mourir sur la 41e, sinon le banc ne mesure rien le jour où ça compte.
+    provider_error: str | None = None
 
     @property
     def refused(self) -> bool:
@@ -76,6 +85,7 @@ class Answer:
             "steps": self.steps,
             "truncated": self.truncated,
             "refused": self.refused,
+            "provider_error": self.provider_error,
         }
 
 
@@ -98,7 +108,22 @@ class ScoutAgent:
         answer = Answer(question=question, text="", model=getattr(self.provider, "model", "inconnu"))
 
         for step in range(1, self.max_steps + 1):
-            completion = self.provider.complete(self.system, messages, tool_registry.TOOLS)
+            try:
+                completion = self.provider.complete(self.system, messages, tool_registry.TOOLS)
+            except Exception as error:  # noqa: BLE001 — on veut vraiment tout attraper ici
+                # Le fournisseur a refusé : schéma rejeté, quota, réseau. On perd
+                # cette question, pas l'exécution entière. Le message est conservé
+                # tel quel, parce que c'est lui qui permet le diagnostic ensuite.
+                logger.warning("Le fournisseur a refusé de répondre : %s", error)
+                answer.provider_error = f"{type(error).__name__}: {error}"
+                # Surtout pas le marqueur de refus ici : un refus est une réponse
+                # de l'agent, et il vaut un point sur les questions pièges. Une
+                # panne du fournisseur ne doit rien rapporter à personne.
+                answer.text = f"[banc] Le fournisseur n'a pas répondu : {type(error).__name__}."
+                answer.steps = step
+                answer.latency_ms = (time.perf_counter() - started) * 1000
+                return answer
+
             answer.usage = answer.usage + completion.usage
             answer.steps = step
 
@@ -120,9 +145,12 @@ class ScoutAgent:
         else:
             # La boucle s'est épuisée sans réponse finale : on le dit plutôt que
             # de renvoyer le dernier texte intermédiaire, qui n'est pas une réponse.
+            # Sans le marqueur de refus, pour la même raison que la panne du
+            # fournisseur : une coupure n'est pas un refus, et un refus vaut un
+            # point sur les questions pièges. `truncated` porte l'information.
             answer.truncated = True
             answer.text = (
-                f"{REFUSAL_MARKER} L'agent n'a pas convergé en {self.max_steps} étapes "
+                f"[banc] L'agent n'a pas convergé en {self.max_steps} étapes "
                 "sans produire de réponse finale."
             )
 

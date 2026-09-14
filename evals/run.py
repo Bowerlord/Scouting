@@ -107,7 +107,14 @@ def run_bench(
                     model=getattr(provider, "model", "inconnu"),
                 )
             outcome.answers.append(answer)
-            outcome.grades.append(grade(outcome.question, answer.text))
+            outcome.grades.append(
+                grade(
+                    outcome.question,
+                    answer.text,
+                    provider_error=answer.provider_error,
+                    truncated=answer.truncated,
+                )
+            )
 
         if verbose:
             done = sum(1 for o in outcomes if o.grades[-1].ok)
@@ -176,6 +183,10 @@ def summarize(
         "par_famille": by_family,
         "refus_a_tort": _rate(all_grades, Verdict.REFUS_A_TORT),
         "hallucinations": _rate(all_grades, Verdict.HALLUCINATION),
+        # Les deux non-réponses sont publiées à part : sinon elles font baisser
+        # l'exactitude sans que le rapport dise pourquoi.
+        "non_convergence": _rate(all_grades, Verdict.NON_CONVERGENCE),
+        "erreurs_fournisseur": _rate(all_grades, Verdict.ERREUR_FOURNISSEUR),
         "refus_correct": (
             sum(1 for o in traps for g in o.grades if g.verdict == Verdict.REFUS_ATTENDU)
             / max(sum(len(o.grades) for o in traps), 1)
@@ -287,6 +298,10 @@ def render_report(summary: dict[str, Any], previous: dict[str, Any] | None) -> s
     add(f"| **Refus à tort** | {_pct(summary['refus_a_tort'])} | {ecart} |")
     ecart = _delta(summary["hallucinations"], _get(previous, "hallucinations"), higher_is_better=False)
     add(f"| **Hallucinations** | {_pct(summary['hallucinations'])} | {ecart} |")
+    ecart = _delta(summary["non_convergence"], _get(previous, "non_convergence"), higher_is_better=False)
+    add(f"| Non-convergence | {_pct(summary['non_convergence'])} | {ecart} |")
+    ecart = _delta(summary["erreurs_fournisseur"], _get(previous, "erreurs_fournisseur"), higher_is_better=False)
+    add(f"| Pannes du fournisseur | {_pct(summary['erreurs_fournisseur'])} | {ecart} |")
     ecart = _delta(summary["instabilite_verdict"], _get(previous, "instabilite_verdict"), higher_is_better=False)
     add(f"| Instabilité du verdict | {_pct(summary['instabilite_verdict'])} | {ecart} |")
     ecart = _delta(summary["instabilite_reponse"], _get(previous, "instabilite_reponse"), higher_is_better=False)
@@ -350,7 +365,9 @@ def render_report(summary: dict[str, Any], previous: dict[str, Any] | None) -> s
     else:
         add("## Échecs")
         add("")
-        add("Aucun. Les 40 questions passent sur toutes les passes.")
+        # Le nombre était écrit en dur : le rapport annonçait « les 40 questions »
+        # même lancé avec --only sur une poignée d'entre elles.
+        add(f"Aucun. Les {summary['questions']} questions passent sur toutes les passes.")
         add("")
 
     if summary["instables"]:
@@ -443,5 +460,20 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
+def _forcer_utf8() -> None:
+    """Empêche le rapport de faire tomber la console Windows.
+
+    Le rapport contient des caractères hors cp1252, l'encodage par défaut d'une
+    console Windows. Sans cela, `print(report)` lève un `UnicodeEncodeError`
+    après que tout le banc a tourné : le travail est fait, les fichiers sont
+    écrits, et la commande sort quand même en erreur. Relevé le 2026-09-11.
+    """
+    for flux in (sys.stdout, sys.stderr):
+        reconfigure = getattr(flux, "reconfigure", None)
+        if reconfigure is not None:
+            reconfigure(encoding="utf-8", errors="replace")
+
+
 if __name__ == "__main__":  # pragma: no cover
+    _forcer_utf8()
     raise SystemExit(main())

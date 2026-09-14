@@ -56,6 +56,8 @@ PRICING_USD_PER_MTOK: dict[str, tuple[float, float]] = {
     # La référence heuristique n'appelle aucun modèle : son coût est nul, et
     # l'écrire ici évite qu'un rapport publie un coût inventé.
     "heuristique-v1": (0.0, 0.0),
+    # Groq, relevé le 2026-09-11 sur la page de tarifs du fournisseur.
+    "openai/gpt-oss-120b": (0.15, 0.6),
     # Modèles à bas coût : à renseigner après relevé sur la page du fournisseur.
     # Laisser une entrée absente est volontaire tant que le tarif n'a pas été
     # vérifié en direct — mieux vaut « non chiffré » qu'un chiffre inventé.
@@ -372,7 +374,9 @@ ENDPOINTS: dict[str, dict[str, str]] = {
     "groq": {
         "base_url": "https://api.groq.com/openai/v1",
         "api_key_env": "GROQ_API_KEY",
-        "default_model": "llama-3.3-70b-versatile",
+        # llama-3.3-70b-versatile a été déprécié par Groq le 2026-08-16.
+        # Remplaçant recommandé par le fournisseur, et il sait appeler des outils.
+        "default_model": "openai/gpt-oss-120b",
     },
     "openrouter": {
         "base_url": "https://openrouter.ai/api/v1",

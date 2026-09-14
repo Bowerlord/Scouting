@@ -10,10 +10,14 @@ que personne ne lise un taux d'exactitude sans savoir comment il a été obtenu.
   contient deux nombres et passe. Le durcir demanderait d'analyser la phrase,
   donc d'introduire un second modèle dans la boucle, donc de ne plus savoir
   qui se trompe quand le score baisse ;
-- un nom est juste s'il apparaît dans la réponse, accents et casse ignorés ;
+- un nom est juste s'il apparaît dans la réponse, accents et casse ignorés. Un
+  code de poste est aussi reconnu sous sa forme parlée : « jungler » pour `jng` ;
 - un refus n'est juste que si le marqueur exact est présent. Une formule vague
   du type « je ne suis pas sûr, mais c'est probablement X » ne compte pas comme
-  un refus, et c'est le but.
+  un refus, et c'est le but ;
+- une **non-réponse** n'est ni juste, ni fausse, ni un refus. Panne du
+  fournisseur ou agent coupé faute de converger : chacune a son verdict, et
+  aucune ne rapporte de point.
 
 Le piège classique de ce genre de banc est l'agent qui refuse tout : il obtient
 100 % sur les pièges. C'est pourquoi le **refus à tort** est compté à part et
@@ -32,7 +36,17 @@ from evals.truth import Question
 
 # Nombres à la française comme à l'anglaise : 2 231, 2231, 2,6, 2.6, 12.14
 # L'espace insécable est présent dans les sorties de modèle, il doit être capté.
-NUMBER_PATTERN = re.compile(r"-?\d[\d   ]*(?:[.,]\d+)?")
+NUMBER_PATTERN = re.compile(r"-?\d[\d   ]*(?:[.,]\d+)?")
+
+#: Les postes sont stockés en code, mais personne n'écrit « jng » dans une
+#: phrase. Relevé le 2026-09-14 sur C12 : « le poste de jungler compte le plus
+#: de lignes » était compté faux, faute de la chaîne `jng` dans la réponse.
+#: `sup`, `mid` et `top` n'ont pas besoin d'alias : ils sont déjà contenus dans
+#: « support », « midlaner » et « toplaner ».
+POSITION_ALIASES: dict[str, tuple[str, ...]] = {
+    "jng": ("jungler", "jungle", "jungleur"),
+    "bot": ("adc", "ad carry"),
+}
 
 
 class Verdict:
@@ -43,6 +57,15 @@ class Verdict:
     REFUS_ATTENDU = "refus_attendu"
     REFUS_A_TORT = "refus_a_tort"
     HALLUCINATION = "hallucination"
+    #: Le fournisseur n'a pas répondu du tout. Ce n'est ni une bonne ni une
+    #: mauvaise réponse de l'agent : c'est une panne. La distinguer est
+    #: indispensable, sinon une coupure réseau sur une question piège serait
+    #: comptée comme un refus réussi et gonflerait le score.
+    ERREUR_FOURNISSEUR = "erreur_fournisseur"
+    #: L'agent a épuisé son budget d'étapes sans conclure. Même logique que la
+    #: panne : ce n'est pas un refus. Relevé le 2026-09-14, trois coupures
+    #: étaient comptées en refus à tort, et auraient valu un point sur un piège.
+    NON_CONVERGENCE = "non_convergence"
 
 
 #: Les verdicts qui comptent comme une bonne réponse.
@@ -77,7 +100,7 @@ def extract_numbers(text: str) -> list[float]:
     """Tous les nombres d'une réponse, séparateurs de milliers compris."""
     found: list[float] = []
     for raw in NUMBER_PATTERN.findall(text):
-        cleaned = raw.replace(" ", "").replace(" ", "").replace(" ", "")
+        cleaned = raw.replace(" ", "").replace(" ", "").replace(" ", "")
         # La virgule française est un séparateur décimal ; le point aussi.
         cleaned = cleaned.replace(",", ".")
         # Un nombre comme « 2.231 » écrit à l'anglaise reste ambigu. On ne
@@ -101,9 +124,53 @@ def _matches_number(text: str, expected: float, tolerance: float) -> bool:
     return False
 
 
-def grade(question: Question, answer_text: str) -> Grade:
-    """Juge une réponse au regard de la vérité terrain."""
+def _matches_name(text: str, expected: str) -> bool:
+    """Le nom attendu, ou l'une de ses formes parlées, figure dans la réponse.
+
+    Limite connue, et elle précède les alias : sur une question « entre X et
+    Y », une réponse qui cite les deux candidats passe quel que soit celui
+    qu'elle désigne. La lever demanderait d'analyser la phrase.
+    """
+    cible = normalize(expected)
+    texte = normalize(text)
+    return any(forme in texte for forme in (cible, *POSITION_ALIASES.get(cible, ())))
+
+
+def grade(
+    question: Question,
+    answer_text: str,
+    provider_error: str | None = None,
+    truncated: bool = False,
+) -> Grade:
+    """Juge une réponse au regard de la vérité terrain.
+
+    `provider_error` et `truncated` court-circuitent tout le reste : sans
+    réponse, il n'y a rien à juger. Compter la question fausse accuserait
+    l'agent d'une faute qu'il n'a pas commise ; la compter comme un refus lui
+    offrirait un point sur les questions pièges.
+    """
     text = answer_text or ""
+
+    if provider_error:
+        return Grade(
+            question.id,
+            question.family,
+            Verdict.ERREUR_FOURNISSEUR,
+            question.expected,
+            text,
+            detail=f"Le fournisseur n'a pas répondu : {provider_error}",
+        )
+
+    if truncated:
+        return Grade(
+            question.id,
+            question.family,
+            Verdict.NON_CONVERGENCE,
+            question.expected,
+            text,
+            detail="L'agent a épuisé son budget d'étapes sans produire de réponse finale.",
+        )
+
     refused = REFUSAL_MARKER in text
 
     if question.is_trap:
@@ -131,9 +198,9 @@ def grade(question: Question, answer_text: str) -> Grade:
     if question.expects == "number":
         ok = _matches_number(text, float(question.expected), question.tolerance)
     elif question.expects == "name":
-        ok = normalize(str(question.expected)) in normalize(text)
+        ok = _matches_name(text, str(question.expected))
     elif question.expects == "names":
-        ok = all(normalize(name) in normalize(text) for name in question.expected)
+        ok = all(_matches_name(text, name) for name in question.expected)
     else:  # pragma: no cover — verrou de configuration
         raise ValueError(f"Type de réponse attendu inconnu : {question.expects}")
 

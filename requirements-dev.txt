@@ -26,3 +26,7 @@ httpx>=0.27
 
 # --- Agent et banc d'evaluation ---
 duckdb>=1.0        # verite terrain du banc, calculee en SQL
+openai>=1.0        # dialecte partage par OpenAI, Groq, DeepSeek, Mistral, GLM, OpenRouter, Ollama
+anthropic>=0.40    # implementation native d'Anthropic
+# Ces deux paquets ne servent qu'aux executions avec un fournisseur reel. La CI
+# tourne sur la reference deterministe et n'a besoin d'aucun des deux.
