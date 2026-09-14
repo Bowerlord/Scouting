@@ -7,6 +7,7 @@
 
 ### 👉 [Tester le dashboard en ligne](https://scouting-lol-erl.streamlit.app/)
 ### 🔌 [Interroger l'API](https://scouting-api-7750158787.europe-west1.run.app/docs)
+### 🤖 [Poser une question à l'agent, et voir s'il a raison](https://scouting-lol-erl.streamlit.app/Agent)
 
 L'API est déployée sur **Google Cloud Run**, région `europe-west1`. Elle sert les mêmes résultats que le dashboard, en HTTP, à n'importe quel client :
 
@@ -14,7 +15,7 @@ L'API est déployée sur **Google Cloud Run**, région `europe-west1`. Elle sert
 curl https://scouting-api-7750158787.europe-west1.run.app/leaderboard?position=mid\&limit=3
 ```
 
-Trois vues interactives : **Leaderboard** (classement des 3 098 joueurs par talent score), **Profil Joueur** (radar de performance et archétype ML) et **Scout Mode** (shortlist par critères et recherche de joueurs similaires par clustering).
+Quatre vues interactives : **Leaderboard** (classement des 3 098 joueurs par talent score), **Profil Joueur** (radar de performance et archétype ML), **Scout Mode** (shortlist par critères et recherche de joueurs similaires par clustering) et **Agent** (une question en langage naturel, la réponse du modèle posée contre la vérité calculée en SQL, avec son verdict).
 
 Ce projet est un outil de scouting data-driven pour les ligues régionales européennes de League of Legends. L'objectif : analyser les performances des joueurs des **ERL** (European Regional Leagues) et estimer lesquels ont le potentiel d'évoluer en **LEC**, la division supérieure.
 
