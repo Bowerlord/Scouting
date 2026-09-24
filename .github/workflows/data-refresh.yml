@@ -2,20 +2,23 @@ name: Data Refresh
 
 # Rafraîchissement hebdomadaire des snapshots du dashboard :
 # télécharge les CSV Oracle's Elixir, ré-exécute tout le pipeline
-# (nettoyage → features → Talent Score → clustering) et ouvre une PR
-# avec les artefacts régénérés de reports/metrics/.
+# (nettoyage → features → Talent Score → clustering), vérifie le résultat
+# et publie les artefacts régénérés de reports/metrics/ directement sur main.
 #
 # Notes de conception :
 # - requirements.txt complet (xgboost + umap-learn) pour que les snapshots
 #   soient identiques à un run local ; runtime attendu ≈ 10-20 min
 #   (~175 Mo de téléchargement + RandomizedSearchCV 60×5 sur ~740 lignes).
-# - Limitation GitHub : une PR créée avec GITHUB_TOKEN ne déclenche PAS le
-#   workflow CI. Pour que la CI tourne sur la PR de refresh, créer un PAT
-#   fine-grained (contents + pull-requests en écriture) dans le secret
-#   DATA_REFRESH_TOKEN ; sinon lancer la CI manuellement (workflow_dispatch).
-# - create-pull-request est un no-op s'il n'y a aucun diff ; generated_at
-#   (date seule) change à chaque run, donc une PR s'ouvre chaque semaine et
-#   porte au minimum la mise à jour de fraîcheur.
+# - Publication directe sur main depuis le 2026-09-24. Avant, le workflow
+#   ouvrait une PR que personne ne fusionnait : du 10 au 24 septembre, trois
+#   refresh verts sont restés dans la PR #25 et l'API servait les données du
+#   7 septembre. Une PR créée avec GITHUB_TOKEN ne déclenche pas la CI, donc
+#   la PR n'apportait aucune vérification. Les contrôles tournent désormais
+#   dans ce job, avant le push : lint, tests, et banc de l'agent sur les
+#   nouvelles données. Si l'un échoue, rien n'est publié et l'issue de suivi
+#   est commentée.
+# - L'API relit les snapshots de main à chaque démarrage, et le dashboard
+#   Streamlit se redéploie sur push : un push suffit à mettre tout à jour.
 # - Deux issues distinctes sont possibles, et elles ne se traitent pas pareil :
 #     * source indisponible (quota Google Drive du compte Oracle's Elixir) :
 #       le téléchargement sort en code 75, le run se termine EN VERT avec une
@@ -41,7 +44,6 @@ on:
 
 permissions:
   contents: write
-  pull-requests: write
   issues: write
   # Indispensable à la fédération d'identité : c'est cette permission qui
   # autorise le job à demander un jeton OIDC à GitHub, que Google échange
@@ -120,25 +122,37 @@ jobs:
           python -m src.models.talent_scorer
           python -m src.models.clusterer
 
-      - name: Ouvrir une PR avec les snapshots régénérés
+      - name: Contrôles avant publication (lint, tests, banc de l'agent)
         if: steps.download.outputs.source_unavailable != 'true'
-        uses: peter-evans/create-pull-request@v6
-        with:
-          token: ${{ secrets.DATA_REFRESH_TOKEN || secrets.GITHUB_TOKEN }}
-          add-paths: |
-            reports/metrics/*.csv
-            reports/metrics/*.json
-          branch: chore/data-refresh
-          delete-branch: true
-          commit-message: "chore(data): rafraîchissement hebdomadaire des snapshots Oracle's Elixir"
-          title: "chore(data): rafraîchissement des snapshots"
-          body: |
-            PR automatique générée par le workflow Data Refresh.
+        env:
+          # Les outils de l'agent lisent les fichiers régénérés, pas ceux de main.
+          SCOUTING_REFRESH_SNAPSHOTS: "0"
+        run: |
+          pip install httpx duckdb pyyaml pytest ruff
+          ruff check src/ tests/ api/ mcp_server/ agent/ evals/
+          pytest tests/ -q
+          python -m evals.run --runs 1 --quiet --fail-under 0.755
 
-            Vérifier avant merge :
-            - les métriques dans `reports/metrics/talent_score_results.json`
-              (PR-AUC cohérent avec les runs précédents),
-            - la date `data_max_date` dans `reports/metrics/refresh_metadata.json`.
+      - name: Publier les snapshots sur main
+        if: steps.download.outputs.source_unavailable != 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/metrics/*.csv reports/metrics/*.json
+          if git diff --cached --quiet; then
+            echo "Aucun changement dans les snapshots, rien à publier." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          git commit -m "chore(data): rafraîchissement des snapshots Oracle's Elixir"
+          git pull --rebase origin main
+          git push origin HEAD:main
+          {
+            echo "### ✅ Snapshots publiés sur main"
+            echo ""
+            echo '```json'
+            cat reports/metrics/refresh_metadata.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Signaler l'échec (une seule issue de suivi, mise à jour)
         if: failure()

@@ -79,7 +79,15 @@ jobs:
       # Le seuil est celui de la référence (77,5 %) moins une marge de 2 points.
       # Il ne juge pas un modèle : il garantit que la vérité terrain, la notation
       # et le rapport continuent de fonctionner.
+      #
+      # SCOUTING_REFRESH_SNAPSHOTS=0 : les outils de l'agent lisent les fichiers
+      # du commit testé, comme la vérité terrain. Sans ça, l'API va chercher les
+      # snapshots publiés sur main : sur une PR qui change les données, l'agent
+      # répondait avec les anciennes et la vérité avec les nouvelles. Constaté le
+      # 2026-09-24 sur la PR de refresh : 70 % au lieu de 77,5 %, sans régression.
       - name: Exécution du banc (référence déterministe, sans clé)
+        env:
+          SCOUTING_REFRESH_SNAPSHOTS: "0"
         run: python -m evals.run --runs 1 --quiet --fail-under 0.755
 
       - name: Publication du rapport
