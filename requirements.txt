@@ -32,6 +32,10 @@ httpx>=0.27
 pyyaml>=6.0
 duckdb>=1.0
 openai>=1.0
+# Repli local de l'agent quand l'API ne répond pas (mcp_server/backend.py) :
+# il rejoue l'API en mémoire, ce qui exige fastapi. Sans lui, une API en veille
+# mettait tous les outils de la page Agent en erreur.
+fastapi>=0.110
 
 # --- Logging ---
 loguru>=0.7

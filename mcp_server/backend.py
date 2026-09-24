@@ -19,6 +19,18 @@ import httpx
 
 DEFAULT_API_URL = os.getenv("SCOUTING_API_URL", "http://localhost:8000")
 REQUEST_TIMEOUT = float(os.getenv("SCOUTING_API_TIMEOUT", "10"))
+# Délai de la sonde /health. Il doit couvrir un démarrage à froid de Cloud Run,
+# qui dépasse les 3 s : avec 3 s, l'API en veille passait pour absente.
+PROBE_TIMEOUT = float(os.getenv("SCOUTING_API_PROBE_TIMEOUT", "20"))
+
+
+def _local_available() -> bool:
+    """Le repli local exige les dépendances de l'API, absentes du dashboard en ligne."""
+    try:
+        import fastapi  # noqa: F401
+    except ImportError:
+        return False
+    return True
 
 
 class Backend:
@@ -33,14 +45,26 @@ class Backend:
 
     @property
     def mode(self) -> str:
-        """'api' ou 'local'. Déterminé au premier appel, puis figé."""
-        if self._mode is None:
-            self._mode = "api" if self._api_reachable() else "local"
+        """'api' ou 'local'. Figé seulement quand le choix est sûr.
+
+        Si l'API ne répond pas et que le repli local est impossible, le mode
+        reste ouvert : l'appel suivant retente l'API. Constaté le 2026-09-24 :
+        une API en veille, un mode figé sur « local » sans fastapi, et tous
+        les outils de l'agent en erreur jusqu'au redémarrage du dashboard.
+        """
+        if self._mode is not None:
+            return self._mode
+        if self._api_reachable():
+            self._mode = "api"
+        elif _local_available():
+            self._mode = "local"
+        else:
+            return "api"
         return self._mode
 
     def _api_reachable(self) -> bool:
         try:
-            response = httpx.get(f"{self.api_url}/health", timeout=3.0)
+            response = httpx.get(f"{self.api_url}/health", timeout=PROBE_TIMEOUT)
             return response.status_code == 200
         except Exception:
             return False
