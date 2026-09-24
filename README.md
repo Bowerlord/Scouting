@@ -15,7 +15,7 @@ L'API est déployée sur **Google Cloud Run**, région `europe-west1`. Elle sert
 curl https://scouting-api-7750158787.europe-west1.run.app/leaderboard?position=mid\&limit=3
 ```
 
-Quatre vues interactives : **Leaderboard** (classement des 3 098 joueurs par talent score), **Profil Joueur** (radar de performance et archétype ML), **Scout Mode** (shortlist par critères et recherche de joueurs similaires par clustering) et **Agent** (une question en langage naturel, la réponse du modèle posée contre la vérité calculée en SQL, avec son verdict).
+Quatre vues interactives : **Leaderboard** (plus de 800 joueurs classés par talent score, sur environ 2 250 fiches joueur-saison), **Profil Joueur** (radar de performance et archétype ML), **Scout Mode** (shortlist par critères et recherche de joueurs similaires par clustering) et **Agent** (une question en langage naturel, la réponse du modèle posée contre la vérité calculée en SQL, avec son verdict).
 
 Ce projet est un outil de scouting data-driven pour les ligues régionales européennes de League of Legends. L'objectif : analyser les performances des joueurs des **ERL** (European Regional Leagues) et estimer lesquels ont le potentiel d'évoluer en **LEC**, la division supérieure.
 
@@ -492,6 +492,32 @@ evals/
    répondrait « données insuffisantes » à tout obtiendrait 100 % sur les pièges.
    Les deux chiffres se lisent ensemble, ou pas du tout.
 
+### Le modèle de la démo
+
+La page Agent du dashboard est servie par **`openai/gpt-oss-120b`**, le modèle
+mesuré ci-dessus, via le palier gratuit de Groq (200 000 jetons par jour, soit
+une cinquantaine de questions).
+
+Elle a d'abord tourné sur `qwen/qwen3.8-27b`, pour ne pas partager le quota du
+banc. **Il n'avait jamais été mesuré.** Passé au banc le 24 septembre 2026, sur
+les 12 questions comparatives :
+
+| Mesure (12 comparatives, 1 passe) | `qwen3.8-27b` | `gpt-oss-120b` |
+|---|---|---|
+| Exactitude | 66,7 % | **100 %** |
+| Hallucinations | 0 % | 0 % |
+| Latence médiane | **40 s** | ~12 s *(une question en ligne)* |
+
+Quatre échecs sur douze, dont deux coupures du quota par minute. Et surtout
+40 secondes d'attente médiane, inacceptable pour une démo. La démo est donc
+repassée sur le modèle mesuré, et le banc ne tourne plus en journée sur ce
+même quota. Même règle que plus haut : **un modèle n'est mis en démo qu'après
+être passé au banc.**
+
+L'API Cloud Run s'endort sans trafic. Le dashboard l'appelle dès l'arrivée du
+visiteur, en tâche de fond, pour qu'elle ait démarré au moment de la première
+question.
+
 ### Choisir le modèle, et le prouver
 
 L'agent ne dépend d'aucun fournisseur. Anthropic a sa propre implémentation ;
@@ -780,7 +806,7 @@ faux. La sidebar du dashboard affiche la fraîcheur des données
 - [x] 📱 Dashboard Streamlit interactif *(voir section Dashboard)*
 - [x] 🎯 Target datée pour éliminer la fuite temporelle *(voir ci-dessous)*
 - [x] ⚙️ Intégration continue (CI) : lint + tests automatiques
-- [x] 🔄 Rafraîchissement hebdomadaire automatique des données *(voir section Dashboard)*
+- [x] 🔄 Rafraîchissement automatique des données, deux fois par semaine, publié seul après contrôles *(voir section Dashboard)*
 - [ ] 🎮 Intégration des données Solo Queue (Riot API)
 - [ ] 📈 Modèle temporel (LSTM) pour capturer la progression
 - [x] 📊 Calibration du Talent Score + percentiles de rang par position *(voir Phase 5)*
