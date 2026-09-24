@@ -83,8 +83,14 @@ def run_bench(
     cassette: Path | None,
     only: str | None,
     verbose: bool,
+    tranche: tuple[int, int] | None = None,
+    journal_path: Path | None = None,
 ) -> dict[str, Any]:
     questions = [q for q in load_questions() if not only or only.lower() in q.id.lower()]
+    if tranche:
+        from evals import journal
+
+        questions = journal.tranche(questions, *tranche)
     if not questions:
         raise SystemExit(f"Aucune question ne correspond au filtre : {only}")
 
@@ -122,6 +128,16 @@ def run_bench(
 
     if isinstance(provider, CassetteProvider):
         provider.save()
+
+    if journal_path is not None:
+        from evals import journal
+
+        journal.ajouter(
+            journal_path,
+            outcomes,
+            fournisseur=getattr(provider, "name", "inconnu"),
+            modele=getattr(provider, "model", "inconnu"),
+        )
 
     return summarize(
         outcomes=outcomes,
@@ -418,7 +434,17 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--fail-under", type=float, default=None, help="Sortie en échec sous ce taux d'exactitude (0 à 1)"
     )
     parser.add_argument("--quiet", action="store_true", help="Ne pas afficher la progression")
-    return parser.parse_args(argv)
+    parser.add_argument(
+        "--tranche", default=None, metavar="K/N", help="Ne passer que la tranche K sur N du jeu (passes de nuit)"
+    )
+    parser.add_argument(
+        "--journal", type=Path, default=None, help="Ajoute chaque réponse à ce journal (voir evals/aggregate.py)"
+    )
+    args = parser.parse_args(argv)
+    if args.tranche:
+        numero, total = (int(x) for x in args.tranche.split("/"))
+        args.tranche = (numero, total)
+    return args
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -436,6 +462,8 @@ def main(argv: list[str] | None = None) -> int:
         cassette=args.cassette,
         only=args.only,
         verbose=not args.quiet,
+        tranche=args.tranche,
+        journal_path=args.journal,
     )
 
     previous = previous_summary(args.out)
