@@ -20,10 +20,12 @@ from pathlib import Path
 # quelle que soit la façon dont Streamlit est lancé
 sys.path.insert(0, str(Path(__file__).parent))
 
+import os
+
 import streamlit as st
 from utils.data_loader import load_refresh_metadata, load_talent_scores
 
-from utils import theme
+from utils import demo_agent, theme
 
 st.set_page_config(
     page_title="ERL Scout",
@@ -33,6 +35,12 @@ st.set_page_config(
 )
 
 theme.appliquer()
+
+# L'API Cloud Run s'endort sans trafic : on la réveille dès l'arrivée sur
+# l'accueil, pour qu'elle soit prête si le visiteur passe sur la page Agent.
+if "api_reveillee" not in st.session_state:
+    st.session_state.api_reveillee = True
+    demo_agent.reveiller_api(os.getenv("SCOUTING_API_URL", demo_agent.API_PUBLIQUE))
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Données

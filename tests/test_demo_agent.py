@@ -92,3 +92,20 @@ def test_un_quota_depasse_est_reconnu():
     assert demo.quota_fournisseur_atteint("RateLimitError: Error code: 429 - tokens per day")
     assert not demo.quota_fournisseur_atteint("APIConnectionError: timeout")
     assert not demo.quota_fournisseur_atteint(None)
+
+
+def test_reveiller_api_appelle_sans_bloquer() -> None:
+    appels = []
+    fil = demo.reveiller_api("https://api.test", attendre=appels.append)
+    fil.join(timeout=2)
+    assert appels == ["https://api.test"]
+    assert fil.daemon
+
+
+def test_reveiller_api_avale_les_erreurs() -> None:
+    def panne(url: str) -> None:
+        raise OSError("API injoignable")
+
+    fil = demo.reveiller_api("https://api.test", attendre=panne)
+    fil.join(timeout=2)
+    assert not fil.is_alive()

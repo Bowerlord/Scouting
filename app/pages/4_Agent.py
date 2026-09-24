@@ -28,7 +28,6 @@ import streamlit as st
 from utils import demo_agent as demo
 from utils import theme
 
-API_PUBLIQUE = "https://scouting-api-7750158787.europe-west1.run.app"
 RAPPORTS = Path(__file__).resolve().parents[2] / "evals" / "reports"
 
 
@@ -42,7 +41,7 @@ def _secret(nom: str) -> str | None:
 
 
 # Avant tout import de `agent` : le backend lit l'URL de l'API à l'import.
-os.environ.setdefault("SCOUTING_API_URL", _secret("SCOUTING_API_URL") or API_PUBLIQUE)
+os.environ.setdefault("SCOUTING_API_URL", _secret("SCOUTING_API_URL") or demo.API_PUBLIQUE)
 # Le palier gratuit limite les jetons par minute : on laisse le client attendre
 # que le quota se recharge plutôt que d'abandonner la question à la deuxième étape.
 os.environ.setdefault("SCOUTING_LLM_MAX_RETRIES", _secret("SCOUTING_LLM_MAX_RETRIES") or "6")
@@ -56,6 +55,11 @@ from evals.truth import load_questions  # noqa: E402
 
 st.set_page_config(page_title="Agent — ERL Scout", page_icon="◆", layout="wide")
 theme.appliquer()
+
+# Une fois par visite : l'API démarre pendant que le visiteur lit la page.
+if "api_reveillee" not in st.session_state:
+    st.session_state.api_reveillee = True
+    demo.reveiller_api(os.environ["SCOUTING_API_URL"])
 
 
 @st.cache_resource
