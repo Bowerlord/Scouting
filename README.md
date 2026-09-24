@@ -740,9 +740,12 @@ Le dashboard ne relance jamais le pipeline ML : il lit des snapshots figés dans
 ### 🔄 Rafraîchissement automatique des données
 
 Un workflow GitHub Actions (`.github/workflows/data-refresh.yml`) ré-exécute
-le pipeline complet **chaque lundi** (ou à la demande via *Run workflow*) et
-ouvre une PR avec les snapshots régénérés de `reports/metrics/` — il suffit de
-vérifier les métriques et de merger. Le schéma des CSV Oracle's Elixir est
+le pipeline complet **chaque lundi et chaque jeudi** (ou à la demande via
+*Run workflow*), puis vérifie le résultat avant de le publier : lint, tests, et
+banc de l'agent rejoué sur les nouvelles données. Si tout passe, les snapshots
+régénérés de `reports/metrics/` sont poussés directement sur `main`, et l'API
+comme le dashboard les servent sans intervention. Si un contrôle échoue, rien
+n'est publié. Le schéma des CSV Oracle's Elixir est
 validé à l'ingestion (`src/data/schema.py`) : une dérive de format fait échouer
 le pipeline bruyamment et ouvre une issue au lieu de produire des snapshots
 faux. La sidebar du dashboard affiche la fraîcheur des données
