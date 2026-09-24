@@ -1,0 +1,99 @@
+{
+  "horodatage": "2026-09-24T17:41:58+00:00",
+  "fournisseur": "groq",
+  "modele": "openai/gpt-oss-120b",
+  "passes": 0,
+  "questions": 20,
+  "reponses": 20,
+  "rejeux_manquants": 0,
+  "duree_s": 0.0,
+  "exactitude": 0.9,
+  "par_famille": {
+    "factuelle": {
+      "questions": 8,
+      "exactitude": 0.875,
+      "verdicts": {
+        "juste": 7,
+        "faux": 1
+      }
+    },
+    "comparative": {
+      "questions": 6,
+      "exactitude": 0.8333333333333334,
+      "verdicts": {
+        "juste": 5,
+        "non_convergence": 1
+      }
+    },
+    "piege": {
+      "questions": 6,
+      "exactitude": 1.0,
+      "verdicts": {
+        "refus_attendu": 6
+      }
+    }
+  },
+  "refus_a_tort": 0.0,
+  "hallucinations": 0.0,
+  "non_convergence": 0.05,
+  "erreurs_fournisseur": 0.0,
+  "refus_correct": 1.0,
+  "instabilite_verdict": 0.0,
+  "instabilite_reponse": 0.0,
+  "latence_p50_ms": 16407.9,
+  "latence_p95_ms": 50814.7,
+  "cout_total_eur": 0.0153,
+  "cout_par_question_eur": 0.000763,
+  "jetons": {
+    "entree": 85436,
+    "sortie": 6114
+  },
+  "outils_par_question": 1.55,
+  "outils_utilises": {
+    "search_players": 19,
+    "get_leaderboard": 6,
+    "list_filters": 2,
+    "get_player": 2,
+    "get_status": 1,
+    "get_archetypes": 1
+  },
+  "erreurs_outil": 0,
+  "echecs": [
+    {
+      "id": "F03",
+      "famille": "factuelle",
+      "question": "Combien de ligues différentes sont couvertes par ce jeu de données ?",
+      "attendu": 6.0,
+      "verdict": "faux",
+      "taux_reussite": 0.0,
+      "reponse": "Le jeu de données couvre six ligues différentes. Les ligues répertoriées sont : LFL, LFL2, LVP SL, NLC, PRM et TCL.",
+      "outils": [
+        "list_filters"
+      ]
+    },
+    {
+      "id": "C09",
+      "famille": "comparative",
+      "question": "Quelle ligue compte le plus de lignes joueur avec au moins 10 matchs joués ?",
+      "attendu": "PRM",
+      "verdict": "non_convergence",
+      "taux_reussite": 0.0,
+      "reponse": "[banc] L'agent n'a pas convergé en 8 étapes sans produire de réponse finale.",
+      "outils": [
+        "search_players",
+        "list_filters",
+        "search_players",
+        "search_players",
+        "search_players",
+        "search_players",
+        "search_players",
+        "search_players"
+      ]
+    }
+  ],
+  "instables": [],
+  "_reponses_attendues": 14,
+  "nuits": 1,
+  "pannes_ecartees": 0,
+  "complet": false
+}
