@@ -217,3 +217,40 @@ def ligne_trace(rang: int, nom: str, arguments: dict[str, Any], duree_ms: float,
 def texte(contenu: str, classe: str) -> str:
     """Un paragraphe échappé. Les sauts de ligne du modèle sont conservés."""
     return f'<div class="{classe}">{html.escape(contenu).replace(chr(10), "<br>")}</div>'
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Réveil de l'API
+# ══════════════════════════════════════════════════════════════════════════════
+#
+# L'API Cloud Run s'endort sans trafic. Relevé le 2026-09-24 : le premier appel
+# d'outil d'une question a pris 11 s, le temps du démarrage à froid. En appelant
+# /health dès l'ouverture de la page, en tâche de fond, le démarrage se fait
+# pendant que le visiteur lit la page et choisit sa question.
+
+
+#: L'API publique, sur Cloud Run. Remplaçable par le secret SCOUTING_API_URL.
+API_PUBLIQUE = "https://scouting-api-7750158787.europe-west1.run.app"
+
+
+def reveiller_api(url: str, attendre=None) -> threading.Thread:
+    """Lance un appel à /health en tâche de fond, sans jamais bloquer ni lever.
+
+    `attendre` remplace l'appel réseau dans les tests.
+    """
+
+    def _appel() -> None:
+        try:
+            if attendre is not None:
+                attendre(url)
+                return
+            from urllib.request import urlopen
+
+            with urlopen(f"{url.rstrip('/')}/health", timeout=30):  # noqa: S310 — URL de config
+                pass
+        except Exception:  # noqa: BLE001 — un réveil raté ne doit rien casser
+            pass
+
+    fil = threading.Thread(target=_appel, name="reveil-api", daemon=True)
+    fil.start()
+    return fil
