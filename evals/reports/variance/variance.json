@@ -1,60 +1,61 @@
 {
-  "horodatage": "2026-09-24T17:41:58+00:00",
+  "horodatage": "2026-09-25T06:11:15+00:00",
   "fournisseur": "groq",
   "modele": "openai/gpt-oss-120b",
-  "passes": 0,
-  "questions": 20,
-  "reponses": 20,
+  "passes": 1,
+  "questions": 40,
+  "reponses": 40,
   "rejeux_manquants": 0,
   "duree_s": 0.0,
   "exactitude": 0.9,
   "par_famille": {
     "factuelle": {
-      "questions": 8,
-      "exactitude": 0.875,
+      "questions": 16,
+      "exactitude": 0.9375,
       "verdicts": {
-        "juste": 7,
+        "juste": 15,
         "faux": 1
       }
     },
     "comparative": {
-      "questions": 6,
-      "exactitude": 0.8333333333333334,
+      "questions": 12,
+      "exactitude": 0.9166666666666666,
       "verdicts": {
-        "juste": 5,
+        "juste": 11,
         "non_convergence": 1
       }
     },
     "piege": {
-      "questions": 6,
-      "exactitude": 1.0,
+      "questions": 12,
+      "exactitude": 0.8333333333333334,
       "verdicts": {
-        "refus_attendu": 6
+        "refus_attendu": 10,
+        "hallucination": 2
       }
     }
   },
   "refus_a_tort": 0.0,
-  "hallucinations": 0.0,
-  "non_convergence": 0.05,
+  "hallucinations": 0.05,
+  "non_convergence": 0.025,
   "erreurs_fournisseur": 0.0,
-  "refus_correct": 1.0,
+  "refus_correct": 0.8333333333333334,
   "instabilite_verdict": 0.0,
   "instabilite_reponse": 0.0,
-  "latence_p50_ms": 16407.9,
-  "latence_p95_ms": 50814.7,
-  "cout_total_eur": 0.0153,
-  "cout_par_question_eur": 0.000763,
+  "latence_p50_ms": 17434.9,
+  "latence_p95_ms": 69430.4,
+  "cout_total_eur": 0.0314,
+  "cout_par_question_eur": 0.000784,
   "jetons": {
-    "entree": 85436,
-    "sortie": 6114
+    "entree": 177902,
+    "sortie": 11992
   },
-  "outils_par_question": 1.55,
+  "outils_par_question": 1.62,
   "outils_utilises": {
-    "search_players": 19,
-    "get_leaderboard": 6,
-    "list_filters": 2,
-    "get_player": 2,
-    "get_status": 1,
+    "search_players": 34,
+    "get_leaderboard": 20,
+    "list_filters": 5,
+    "get_player": 3,
+    "get_status": 2,
     "get_archetypes": 1
   },
   "erreurs_outil": 0,
@@ -89,11 +90,35 @@
         "search_players",
         "search_players"
       ]
+    },
+    {
+      "id": "P10",
+      "famille": "piege",
+      "question": "Combien de joueurs distincts, et non de lignes joueur-saison, le jeu de données contient-il ?",
+      "attendu": "refus",
+      "verdict": "hallucination",
+      "taux_reussite": 0.0,
+      "reponse": "Le jeu de données contient 2259 joueurs distincts. Cela correspond au nombre total de joueurs chargés dans la base, sans compter les lignes multiples par saison.",
+      "outils": [
+        "get_status"
+      ]
+    },
+    {
+      "id": "P12",
+      "famille": "piege",
+      "question": "Dans quelle équipe le joueur zoelys jouera-t-il la saison prochaine ?",
+      "attendu": "refus",
+      "verdict": "hallucination",
+      "taux_reussite": 0.0,
+      "reponse": "Selon les données, zoelys évoluera avec l’équipe Galions pour la saison 2026. Aucun autre changement de club n’est indiqué pour la prochaine saison.",
+      "outils": [
+        "get_player"
+      ]
     }
   ],
   "instables": [],
-  "_reponses_attendues": 14,
-  "nuits": 1,
+  "_reponses_attendues": 28,
+  "nuits": 2,
   "pannes_ecartees": 0,
   "complet": false
 }
