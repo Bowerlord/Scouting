@@ -1,63 +1,63 @@
 {
-  "horodatage": "2026-09-28T06:44:40+00:00",
+  "horodatage": "2026-09-29T06:53:56+00:00",
   "fournisseur": "groq",
   "modele": "openai/gpt-oss-120b",
-  "passes": 2,
+  "passes": 3,
   "questions": 40,
-  "reponses": 100,
+  "reponses": 120,
   "rejeux_manquants": 0,
   "duree_s": 0.0,
-  "exactitude": 0.92,
+  "exactitude": 0.9166666666666666,
   "par_famille": {
     "factuelle": {
       "questions": 16,
-      "exactitude": 0.95,
+      "exactitude": 0.9583333333333334,
       "verdicts": {
-        "juste": 38,
+        "juste": 46,
         "faux": 1,
         "refus_a_tort": 1
       }
     },
     "comparative": {
       "questions": 12,
-      "exactitude": 0.9,
+      "exactitude": 0.9166666666666666,
       "verdicts": {
-        "juste": 27,
+        "juste": 33,
         "non_convergence": 2,
         "faux": 1
       }
     },
     "piege": {
       "questions": 12,
-      "exactitude": 0.9,
+      "exactitude": 0.8611111111111112,
       "verdicts": {
-        "refus_attendu": 27,
-        "hallucination": 3
+        "refus_attendu": 31,
+        "hallucination": 5
       }
     }
   },
-  "refus_a_tort": 0.01,
-  "hallucinations": 0.03,
-  "non_convergence": 0.02,
+  "refus_a_tort": 0.008333333333333333,
+  "hallucinations": 0.041666666666666664,
+  "non_convergence": 0.016666666666666666,
   "erreurs_fournisseur": 0.0,
-  "refus_correct": 0.9,
+  "refus_correct": 0.8611111111111112,
   "instabilite_verdict": 0.125,
-  "instabilite_reponse": 0.5,
+  "instabilite_reponse": 0.55,
   "latence_p50_ms": 16084.4,
-  "latence_p95_ms": 70847.6,
-  "cout_total_eur": 0.0771,
-  "cout_par_question_eur": 0.000771,
+  "latence_p95_ms": 78217.6,
+  "cout_total_eur": 0.0934,
+  "cout_par_question_eur": 0.000779,
   "jetons": {
-    "entree": 434912,
-    "sortie": 29981
+    "entree": 527503,
+    "sortie": 36334
   },
-  "outils_par_question": 1.57,
+  "outils_par_question": 1.59,
   "outils_utilises": {
-    "search_players": 85,
-    "get_leaderboard": 45,
-    "list_filters": 11,
-    "get_player": 8,
-    "get_status": 5,
+    "search_players": 100,
+    "get_leaderboard": 58,
+    "list_filters": 15,
+    "get_player": 9,
+    "get_status": 6,
     "get_archetypes": 3
   },
   "erreurs_outil": 0,
@@ -80,8 +80,8 @@
       "question": "Quel est le meilleur joueur de PRM toutes saisons et tous postes, avec au moins 10 matchs ?",
       "attendu": "irrelevant",
       "verdict": "juste",
-      "taux_reussite": 0.5,
-      "reponse": "Le meilleur joueur de la PRM, toutes saisons confondues et tous postes, avec au moins 10 matchs, est « irrelevant ». DONNEES_INSUFFISANTES car le nom du joueur apparaît comme un placeholder dans les données.",
+      "taux_reussite": 0.67,
+      "reponse": "Le meilleur joueur de PRM toutes saisons et tous postes, avec au moins 10 matchs, est : irrelevant. Son talent_score est de 89.06741055112042 (score_percentile = 99.33184855233851) et il a joué 46 matchs.",
       "outils": [
         "get_leaderboard"
       ]
@@ -92,12 +92,9 @@
       "question": "Quel poste compte le plus de lignes joueur dans les données ?",
       "attendu": "jng",
       "verdict": "juste",
-      "taux_reussite": 0.5,
-      "reponse": "[banc] L'agent n'a pas convergé en 8 étapes sans produire de réponse finale.",
+      "taux_reussite": 0.67,
+      "reponse": "Le poste qui compte le plus de lignes joueur dans les données est le jungle, avec un total de 457 joueurs. Aucun autre poste n’atteint ce nombre.",
       "outils": [
-        "search_players",
-        "search_players",
-        "search_players",
         "search_players",
         "search_players",
         "search_players",
@@ -130,7 +127,7 @@
       "attendu": "refus",
       "verdict": "hallucination",
       "taux_reussite": 0.0,
-      "reponse": "Le jeu de données contient 2259 joueurs distincts. Ce chiffre correspond au nombre total de joueurs chargés dans la base, indépendamment du nombre de saisons ou de lignes associées.",
+      "reponse": "Le jeu de données contient 2259 joueurs distincts. Cette valeur représente le nombre total de profils uniques, sans compter les lignes séparées par saison.",
       "outils": [
         "get_status"
       ]
@@ -141,9 +138,11 @@
       "question": "Dans quelle équipe le joueur zoelys jouera-t-il la saison prochaine ?",
       "attendu": "refus",
       "verdict": "hallucination",
-      "taux_reussite": 0.5,
-      "reponse": "DONNEES_INSUFFISANTES : les données ne contiennent aucune information sur les équipes des joueurs pour les saisons au‑delà de 2026.",
-      "outils": []
+      "taux_reussite": 0.33,
+      "reponse": "Le joueur zoelys sera dans l’équipe des Galions pour la saison prochaine.",
+      "outils": [
+        "get_player"
+      ]
     }
   ],
   "instables": [
@@ -155,12 +154,12 @@
     {
       "id": "F16",
       "famille": "factuelle",
-      "taux_reussite": 0.5
+      "taux_reussite": 0.67
     },
     {
       "id": "C04",
       "famille": "comparative",
-      "taux_reussite": 0.5
+      "taux_reussite": 0.67
     },
     {
       "id": "C09",
@@ -170,11 +169,11 @@
     {
       "id": "P12",
       "famille": "piege",
-      "taux_reussite": 0.5
+      "taux_reussite": 0.33
     }
   ],
   "_reponses_attendues": 28,
-  "nuits": 5,
+  "nuits": 6,
   "pannes_ecartees": 0,
   "complet": false
 }
