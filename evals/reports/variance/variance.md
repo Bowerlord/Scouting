@@ -1,10 +1,10 @@
-> Agrégat du journal des passes de nuit : 6 nuit(s), 0 réponse(s) perdue(s) sur panne du fournisseur, écartée(s) et reposée(s).
+> Agrégat du journal des passes de nuit : 7 nuit(s), 0 réponse(s) perdue(s) sur panne du fournisseur, écartée(s) et reposée(s).
 >
 > **Mesure en cours** : 3 passe(s) valide(s) sur 5 pour la question la moins avancée. Ces chiffres ne sont pas encore publiables.
 
 # Banc d'évaluation de l'agent ERL Scout
 
-*Exécuté le 2026-09-29T06:53:56+00:00 — 40 questions × 3 passes*
+*Exécuté le 2026-09-30T06:41:55+00:00 — 40 questions × 3 passes*
 
 Modèle : `openai/gpt-oss-120b` · fournisseur : `groq` · durée : 0.0 s
 
@@ -12,22 +12,22 @@ Modèle : `openai/gpt-oss-120b` · fournisseur : `groq` · durée : 0.0 s
 
 | Mesure | Valeur | Écart au rapport précédent |
 |---|---|---|
-| **Exactitude globale** | 91.7 % | — |
-| Exactitude — factuelle (16 questions) | 95.8 % | — |
-| Exactitude — comparative (12 questions) | 91.7 % | — |
-| Exactitude — piege (12 questions) | 86.1 % | — |
-| Refus correct sur les pièges | 86.1 % | — |
-| **Refus à tort** | 0.8 % | — |
-| **Hallucinations** | 4.2 % | — |
-| Non-convergence | 1.7 % | — |
+| **Exactitude globale** | 91.4 % | — |
+| Exactitude — factuelle (16 questions) | 94.6 % | — |
+| Exactitude — comparative (12 questions) | 90.5 % | — |
+| Exactitude — piege (12 questions) | 88.1 % | — |
+| Refus correct sur les pièges | 88.1 % | — |
+| **Refus à tort** | 0.7 % | — |
+| **Hallucinations** | 3.6 % | — |
+| Non-convergence | 1.4 % | — |
 | Pannes du fournisseur | 0.0 % | — |
 | Instabilité du verdict | 12.5 % | — |
-| Instabilité des chiffres cités | 55.0 % | — |
-| Latence p50 | 16084 ms | — |
+| Instabilité des chiffres cités | 57.5 % | — |
+| Latence p50 | 16105 ms | — |
 | Latence p95 | 78218 ms | — |
-| Coût par question | 0.00078 € | — |
-| Coût total de l'exécution | 0.0934 € | — |
-| Appels d'outils par question | 1.59 | — |
+| Coût par question | 0.00077 € | — |
+| Coût total de l'exécution | 0.1074 € | — |
+| Appels d'outils par question | 1.56 | — |
 | Appels d'outils en erreur | 0 | — |
 
 ### Comment lire ces chiffres
@@ -40,25 +40,25 @@ Modèle : `openai/gpt-oss-120b` · fournisseur : `groq` · durée : 0.0 s
 
 | Outil | Appels |
 |---|---|
-| `search_players` | 100 |
-| `get_leaderboard` | 58 |
-| `list_filters` | 15 |
-| `get_player` | 9 |
-| `get_status` | 6 |
-| `get_archetypes` | 3 |
+| `search_players` | 116 |
+| `get_leaderboard` | 64 |
+| `list_filters` | 17 |
+| `get_player` | 11 |
+| `get_status` | 7 |
+| `get_archetypes` | 4 |
 
 ## Les 6 questions qui échouent
 
 Cette section est la raison d'être du banc. Savoir *lesquelles* échouent vaut plus que le taux global.
 
-**F03** · factuelle · réussie 67.0 % des passes
+**F03** · factuelle · réussie 50.0 % des passes
 
 > Combien de ligues différentes sont couvertes par ce jeu de données ?
 
 - Attendu : `6.0`
-- Verdict dominant : `juste`
+- Verdict dominant : `faux`
 - Outils appelés : `list_filters`
-- Dernière réponse : Il y a 6 ligues différentes couvertes par le jeu de données. (LFL, LFL2, LVP SL, NLC, PRM et TCL).
+- Dernière réponse : Le jeu de données couvre six ligues différentes. Les ligues listées sont : LFL, LFL2, LVP SL, NLC, PRM et TCL.
 
 **F16** · factuelle · réussie 67.0 % des passes
 
@@ -78,14 +78,14 @@ Cette section est la raison d'être du banc. Savoir *lesquelles* échouent vaut 
 - Outils appelés : `search_players`, `search_players`, `search_players`, `search_players`, `search_players`
 - Dernière réponse : Le poste qui compte le plus de lignes joueur dans les données est le jungle, avec un total de 457 joueurs. Aucun autre poste n’atteint ce nombre.
 
-**C09** · comparative · réussie 33.0 % des passes
+**C09** · comparative · réussie 25.0 % des passes
 
 > Quelle ligue compte le plus de lignes joueur avec au moins 10 matchs joués ?
 
 - Attendu : `PRM`
-- Verdict dominant : `non_convergence`
+- Verdict dominant : `faux`
 - Outils appelés : `list_filters`, `search_players`, `search_players`, `search_players`, `search_players`, `search_players`, `search_players`
-- Dernière réponse : La LFL compte le plus de lignes joueur avec au moins 10 matchs joués, avec 327 joueurs.
+- Dernière réponse : La ligue LFL compte le plus de lignes joueur avec au moins 10 matchs joués, avec 327 joueurs.
 
 **P10** · piege · réussie 0.0 % des passes
 
@@ -109,10 +109,10 @@ Cette section est la raison d'être du banc. Savoir *lesquelles* échouent vaut 
 
 | Question | Famille | Taux de réussite |
 |---|---|---|
-| F03 | factuelle | 67.0 % |
+| F03 | factuelle | 50.0 % |
 | F16 | factuelle | 67.0 % |
 | C04 | comparative | 67.0 % |
-| C09 | comparative | 33.0 % |
+| C09 | comparative | 25.0 % |
 | P12 | piege | 33.0 % |
 
 ---
