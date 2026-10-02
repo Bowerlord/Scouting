@@ -1,64 +1,64 @@
 {
-  "horodatage": "2026-10-01T07:16:47+00:00",
+  "horodatage": "2026-10-02T07:02:09+00:00",
   "fournisseur": "groq",
   "modele": "openai/gpt-oss-120b",
   "passes": 4,
   "questions": 40,
-  "reponses": 160,
+  "reponses": 180,
   "rejeux_manquants": 0,
   "duree_s": 0.0,
-  "exactitude": 0.91875,
+  "exactitude": 0.9277777777777778,
   "par_famille": {
     "factuelle": {
       "questions": 16,
-      "exactitude": 0.953125,
+      "exactitude": 0.9583333333333334,
       "verdicts": {
-        "juste": 61,
+        "juste": 69,
         "faux": 2,
         "refus_a_tort": 1
       }
     },
     "comparative": {
       "questions": 12,
-      "exactitude": 0.9166666666666666,
+      "exactitude": 0.9259259259259259,
       "verdicts": {
-        "juste": 44,
+        "juste": 50,
         "non_convergence": 2,
         "faux": 2
       }
     },
     "piege": {
       "questions": 12,
-      "exactitude": 0.875,
+      "exactitude": 0.8888888888888888,
       "verdicts": {
-        "refus_attendu": 42,
+        "refus_attendu": 48,
         "hallucination": 6
       }
     }
   },
-  "refus_a_tort": 0.00625,
-  "hallucinations": 0.0375,
-  "non_convergence": 0.0125,
+  "refus_a_tort": 0.005555555555555556,
+  "hallucinations": 0.03333333333333333,
+  "non_convergence": 0.011111111111111112,
   "erreurs_fournisseur": 0.0,
-  "refus_correct": 0.875,
+  "refus_correct": 0.8888888888888888,
   "instabilite_verdict": 0.125,
-  "instabilite_reponse": 0.6,
-  "latence_p50_ms": 16084.4,
+  "instabilite_reponse": 0.625,
+  "latence_p50_ms": 16105.2,
   "latence_p95_ms": 78217.6,
-  "cout_total_eur": 0.1231,
-  "cout_par_question_eur": 0.000769,
+  "cout_total_eur": 0.1368,
+  "cout_par_question_eur": 0.00076,
   "jetons": {
-    "entree": 699236,
-    "sortie": 46727
+    "entree": 777409,
+    "sortie": 51889
   },
-  "outils_par_question": 1.57,
+  "outils_par_question": 1.55,
   "outils_utilises": {
-    "search_players": 131,
-    "get_leaderboard": 77,
-    "list_filters": 20,
-    "get_player": 12,
-    "get_status": 8,
-    "get_archetypes": 4
+    "search_players": 147,
+    "get_leaderboard": 83,
+    "list_filters": 21,
+    "get_player": 14,
+    "get_status": 9,
+    "get_archetypes": 5
   },
   "erreurs_outil": 0,
   "echecs": [
@@ -67,9 +67,9 @@
       "famille": "factuelle",
       "question": "Combien de ligues différentes sont couvertes par ce jeu de données ?",
       "attendu": 6.0,
-      "verdict": "faux",
-      "taux_reussite": 0.5,
-      "reponse": "Le jeu de données couvre six ligues différentes. Les ligues listées sont : LFL, LFL2, LVP SL, NLC, PRM et TCL.",
+      "verdict": "juste",
+      "taux_reussite": 0.6,
+      "reponse": "Il y a 6 ligues différentes couvertes par ce jeu de données. (LFL, LFL2, LVP SL, NLC, PRM et TCL).",
       "outils": [
         "list_filters"
       ]
@@ -107,11 +107,10 @@
       "famille": "comparative",
       "question": "Quelle ligue compte le plus de lignes joueur avec au moins 10 matchs joués ?",
       "attendu": "PRM",
-      "verdict": "faux",
-      "taux_reussite": 0.25,
-      "reponse": "La ligue LFL compte le plus de lignes joueur avec au moins 10 matchs joués, avec 327 joueurs.",
+      "verdict": "juste",
+      "taux_reussite": 0.4,
+      "reponse": "La ligue PRM compte le plus de lignes joueur avec au moins 10 matchs joués, avec 416 joueurs. Aucun autre ligue (LFL 327, LFL2 199, NLC 336, LVP SL 230, TCL 299) n’atteint ce total.",
       "outils": [
-        "list_filters",
         "search_players",
         "search_players",
         "search_players",
@@ -147,7 +146,7 @@
     {
       "id": "F03",
       "famille": "factuelle",
-      "taux_reussite": 0.5
+      "taux_reussite": 0.6
     },
     {
       "id": "F16",
@@ -162,7 +161,7 @@
     {
       "id": "C09",
       "famille": "comparative",
-      "taux_reussite": 0.25
+      "taux_reussite": 0.4
     },
     {
       "id": "P12",
@@ -171,7 +170,7 @@
     }
   ],
   "_reponses_attendues": 28,
-  "nuits": 8,
+  "nuits": 9,
   "pannes_ecartees": 0,
   "complet": false
 }
