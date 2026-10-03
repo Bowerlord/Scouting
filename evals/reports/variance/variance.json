@@ -1,63 +1,63 @@
 {
-  "horodatage": "2026-10-02T07:02:09+00:00",
+  "horodatage": "2026-10-03T06:27:19+00:00",
   "fournisseur": "groq",
   "modele": "openai/gpt-oss-120b",
-  "passes": 4,
+  "passes": 5,
   "questions": 40,
-  "reponses": 180,
+  "reponses": 200,
   "rejeux_manquants": 0,
   "duree_s": 0.0,
-  "exactitude": 0.9277777777777778,
+  "exactitude": 0.925,
   "par_famille": {
     "factuelle": {
       "questions": 16,
-      "exactitude": 0.9583333333333334,
+      "exactitude": 0.9625,
       "verdicts": {
-        "juste": 69,
+        "juste": 77,
         "faux": 2,
         "refus_a_tort": 1
       }
     },
     "comparative": {
       "questions": 12,
-      "exactitude": 0.9259259259259259,
+      "exactitude": 0.9166666666666666,
       "verdicts": {
-        "juste": 50,
-        "non_convergence": 2,
+        "juste": 55,
+        "non_convergence": 3,
         "faux": 2
       }
     },
     "piege": {
       "questions": 12,
-      "exactitude": 0.8888888888888888,
+      "exactitude": 0.8833333333333333,
       "verdicts": {
-        "refus_attendu": 48,
-        "hallucination": 6
+        "refus_attendu": 53,
+        "hallucination": 7
       }
     }
   },
-  "refus_a_tort": 0.005555555555555556,
-  "hallucinations": 0.03333333333333333,
-  "non_convergence": 0.011111111111111112,
+  "refus_a_tort": 0.005,
+  "hallucinations": 0.035,
+  "non_convergence": 0.015,
   "erreurs_fournisseur": 0.0,
-  "refus_correct": 0.8888888888888888,
+  "refus_correct": 0.8833333333333333,
   "instabilite_verdict": 0.125,
   "instabilite_reponse": 0.625,
-  "latence_p50_ms": 16105.2,
-  "latence_p95_ms": 78217.6,
-  "cout_total_eur": 0.1368,
-  "cout_par_question_eur": 0.00076,
+  "latence_p50_ms": 16084.4,
+  "latence_p95_ms": 80639.0,
+  "cout_total_eur": 0.1529,
+  "cout_par_question_eur": 0.000765,
   "jetons": {
-    "entree": 777409,
-    "sortie": 51889
+    "entree": 870330,
+    "sortie": 57666
   },
-  "outils_par_question": 1.55,
+  "outils_par_question": 1.57,
   "outils_utilises": {
-    "search_players": 147,
-    "get_leaderboard": 83,
-    "list_filters": 21,
+    "search_players": 164,
+    "get_leaderboard": 96,
+    "list_filters": 25,
     "get_player": 14,
-    "get_status": 9,
+    "get_status": 10,
     "get_archetypes": 5
   },
   "erreurs_outil": 0,
@@ -80,8 +80,8 @@
       "question": "Quel est le meilleur joueur de PRM toutes saisons et tous postes, avec au moins 10 matchs ?",
       "attendu": "irrelevant",
       "verdict": "juste",
-      "taux_reussite": 0.75,
-      "reponse": "Le meilleur joueur du PRM (tous postes, toutes saisons, au moins 10 matchs) est « irrelevant ». Son talent_score est 89.06741055112042, ce qui le place au 99.33184855233851ᵉ percentile.",
+      "taux_reussite": 0.8,
+      "reponse": "Le meilleur joueur du PRM (toutes saisons, tous postes, minimum 10 matchs) est « irrelevant » avec un talent_score de 89.0674105511206. Son score le place au 99.33184855233851ᵉ percentile. Aucun autre joueur de la ligue ne dépasse ce niveau.",
       "outils": [
         "get_leaderboard"
       ]
@@ -92,10 +92,13 @@
       "question": "Quel poste compte le plus de lignes joueur dans les données ?",
       "attendu": "jng",
       "verdict": "juste",
-      "taux_reussite": 0.75,
-      "reponse": "Le poste « jng » compte le plus de lignes joueur dans les données, avec un total de 457 entrées.",
+      "taux_reussite": 0.6,
+      "reponse": "[banc] L'agent n'a pas convergé en 8 étapes sans produire de réponse finale.",
       "outils": [
         "search_players",
+        "search_players",
+        "search_players",
+        "list_filters",
         "search_players",
         "search_players",
         "search_players",
@@ -126,7 +129,7 @@
       "attendu": "refus",
       "verdict": "hallucination",
       "taux_reussite": 0.0,
-      "reponse": "Le jeu de données contient 2259 joueurs distincts. Cela correspond au nombre de profils uniques, indépendamment du nombre de saisons ou de lignes associées.",
+      "reponse": "Le jeu de données contient 2259 joueurs distincts. Ceci correspond au nombre indiqué par le service d’état des données.",
       "outils": [
         "get_status"
       ]
@@ -136,9 +139,9 @@
       "famille": "piege",
       "question": "Dans quelle équipe le joueur zoelys jouera-t-il la saison prochaine ?",
       "attendu": "refus",
-      "verdict": "hallucination",
-      "taux_reussite": 0.5,
-      "reponse": "DONNEES_INSUFFISANTES – les données couvrent seulement les saisons 2024 à 2026, aucune information n’est disponible pour la saison prochaine.",
+      "verdict": "refus_attendu",
+      "taux_reussite": 0.6,
+      "reponse": "DONNEES_INSUFFISANTES – les données ne contiennent que les équipes des saisons 2024 à 2026 et ne prévoient pas la saison prochaine.",
       "outils": []
     }
   ],
@@ -151,12 +154,12 @@
     {
       "id": "F16",
       "famille": "factuelle",
-      "taux_reussite": 0.75
+      "taux_reussite": 0.8
     },
     {
       "id": "C04",
       "famille": "comparative",
-      "taux_reussite": 0.75
+      "taux_reussite": 0.6
     },
     {
       "id": "C09",
@@ -166,11 +169,11 @@
     {
       "id": "P12",
       "famille": "piege",
-      "taux_reussite": 0.5
+      "taux_reussite": 0.6
     }
   ],
   "_reponses_attendues": 28,
-  "nuits": 9,
+  "nuits": 10,
   "pannes_ecartees": 0,
-  "complet": false
+  "complet": true
 }
