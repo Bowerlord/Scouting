@@ -1,11 +1,11 @@
 {
-  "data_max_date": "2026-09-20",
+  "data_max_date": "2026-10-11",
   "data_years": [
     2024,
     2025,
     2026
   ],
-  "generated_at": "2026-10-08",
-  "n_players": 1000,
-  "n_rows": 48900
+  "generated_at": "2026-10-12",
+  "n_players": 1014,
+  "n_rows": 49010
 }
