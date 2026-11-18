@@ -170,21 +170,6 @@ strong, b { font-weight: 600 !important; }
     border-right: 1px solid __HAIRLINE__;
 }
 
-[data-testid="stSidebarNav"] li:first-child a p {
-    visibility: hidden;
-    position: relative;
-    min-width: 8rem;
-}
-
-[data-testid="stSidebarNav"] li:first-child a p::after {
-    content: "Watchlist";
-    visibility: visible;
-    position: absolute;
-    left: 0;
-    top: 0;
-    white-space: nowrap;
-}
-
 /* ── En-tete de page ──────────────────────────────────────────────────────── */
 
 .es-kicker {

@@ -53,8 +53,16 @@ from agent.providers import get_provider  # noqa: E402
 from evals.scoring import grade  # noqa: E402
 from evals.truth import load_questions  # noqa: E402
 
-st.set_page_config(page_title="Agent — ERL Scout", page_icon="◆", layout="wide")
+st.set_page_config(page_title="Agent — ERL Scout", page_icon="◆", layout="wide", initial_sidebar_state="collapsed")
 theme.appliquer()
+
+# Le menu latéral automatique de Streamlit ne sert plus : l'app vit sur la page
+# d'accueil et n'a qu'une page sœur. Un lien de retour suffit.
+st.markdown(
+    '<style>[data-testid="stSidebar"], [data-testid="stSidebarCollapsedControl"] { display: none !important; }</style>',
+    unsafe_allow_html=True,
+)
+st.page_link("app.py", label="← Retour à ERL Scout")
 
 # Une fois par visite : l'API démarre pendant que le visiteur lit la page.
 if "api_reveillee" not in st.session_state:
