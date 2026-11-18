@@ -15,7 +15,7 @@ L'API est déployée sur **Google Cloud Run**, région `europe-west1`. Elle sert
 curl https://scouting-api-7750158787.europe-west1.run.app/leaderboard?position=mid\&limit=3
 ```
 
-Quatre vues interactives : **Leaderboard** (plus de 800 joueurs classés par talent score, sur environ 2 250 fiches joueur-saison), **Profil Joueur** (radar de performance et archétype ML), **Scout Mode** (shortlist par critères et recherche de joueurs similaires par clustering) et **Agent** (une question en langage naturel, la réponse du modèle posée contre la vérité calculée en SQL, avec son verdict).
+Une application web (React, dans `web/`) : **Composition** modifiable par glisser-déposer (cinq postes, trois places chacun), **Joueurs** classés au poste avec leurs stats en percentiles, une **fiche en tiroir** avec les profils proches, un **Suivi** en étapes avec notes et alerte quand un joueur n'a pas été revu, et Ctrl+K pour tout trouver. L'**Agent** reste disponible : une question en langage naturel, la réponse du modèle posée contre la vérité calculée en SQL, avec son verdict.
 
 Ce projet est un outil de scouting data-driven pour les ligues régionales européennes de League of Legends. L'objectif : analyser les performances des joueurs des **ERL** (European Regional Leagues) et estimer lesquels ont le potentiel d'évoluer en **LEC**, la division supérieure.
 
@@ -692,7 +692,8 @@ erl-scout/
 │
 ├── app/                             # Dashboard Streamlit
 │   ├── app.py                       # Page d'accueil
-│   ├── pages/                       # Leaderboard, Profil Joueur, Scout Mode
+│   ├── web/index.html               # l'app React construite, servie par la coquille app.py
+│   ├── pages/                       # Agent
 │   └── utils/                       # Chargement des résultats (cache)
 │
 ├── models/                          # Modèles sauvegardés (.pkl)
@@ -732,13 +733,16 @@ make app   # ou : streamlit run app/app.py
 
 ## 🖥️ Dashboard interactif (Streamlit)
 
-Le dashboard offre trois vues de scouting, alimentées par les résultats du pipeline ML :
+L'application web (`web/`, React) offre quatre écrans, alimentés par les résultats du pipeline ML :
 
-| Page | Contenu |
+| Écran | Contenu |
 |---|---|
-| 🏆 **Leaderboard** | Classement des joueurs ERL par Talent Score, filtrable par ligue et position |
-| 👤 **Profil Joueur** | Fiche détaillée d'un joueur : score, Z-scores, archétype de style de jeu |
-| 🔍 **Scout Mode** | Recherche par style (« trouve-moi un joueur qui joue comme X ») et filtres par archétype |
+| **Accueil** | Tes titulaires, l'état du suivi, les trois meilleurs de chaque poste |
+| **Joueurs** | Classement au poste, avance à 15 min, dégâts et farm en percentiles, filtres |
+| **Composition** | Cinq postes, trois places chacun, glisser-déposer, plusieurs compositions nommées |
+| **Suivi** | Repéré, à regarder, contacté, essai, signé, avec notes et alerte après 21 jours |
+
+Elle est servie à l'adresse Streamlit historique par la coquille `app/app.py`, qui lui injecte les données. Après une modification de `web/`, reconstruire avec `npm run build:streamlit`.
 
 ### Lancer en local
 

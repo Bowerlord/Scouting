@@ -1,0 +1,44 @@
+# Application web d'ERL Scout.
+#
+# L'app publique est servie par Streamlit Cloud (scouting-lol-erl.streamlit.app)
+# à partir du fichier commité app/web/index.html : Streamlit Cloud ne lance pas
+# npm. Ce workflow vérifie donc deux choses à chaque changement de web/ :
+#   1. l'app passe le lint et se construit ;
+#   2. le fichier commité correspond bien au code, sinon le site public
+#      servirait une version périmée sans que personne ne le voie.
+
+name: Web app
+
+on:
+  push:
+    branches: ["main"]
+    paths: ["web/**", "app/web/**", ".github/workflows/web.yml"]
+  pull_request:
+    paths: ["web/**", "app/web/**", ".github/workflows/web.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build:streamlit
+      - name: Le fichier servi par Streamlit est-il à jour ?
+        run: |
+          if ! git diff --quiet -- ../app/web; then
+            echo "::error::app/web/index.html ne correspond pas au code de web/. Lancer « npm run build:streamlit » dans web/ et commiter le résultat."
+            git diff --stat -- ../app/web
+            exit 1
+          fi
