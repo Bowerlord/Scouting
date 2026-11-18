@@ -16,6 +16,15 @@ const VIEWS: { id: View; label: string }[] = [
 ];
 const SEASONS = [2026, 2025, 2024];
 
+/** Dans l'iframe Streamlit, l'URL n'est pas toujours modifiable : la vue vit dans l'état, le fragment suit quand il peut. */
+const setHash = (v: View) => {
+  try {
+    history.replaceState(null, "", `#${v}`);
+  } catch {
+    /* document sans URL propre (srcdoc) : sans conséquence */
+  }
+};
+
 const viewFromHash = (): View => {
   const h = location.hash.replace("#", "") as View;
   return VIEWS.some((v) => v.id === h) ? h : "accueil";
@@ -90,7 +99,7 @@ export default function App() {
     return {
       players, byId, season, comps, comp, track, selected,
       open: setSelected,
-      go: (v) => { location.hash = v; },
+      go: (v) => { setView(v); setHash(v); },
       toast,
       inComp,
       place: (id, role, index) => {
@@ -151,7 +160,7 @@ export default function App() {
     const id = `c${Date.now()}`;
     setComps((all) => [...all, { id, name: `Composition ${all.length + 1}`, slots: emptyLineup() }]);
     setCompId(id);
-    location.hash = "composition";
+    setView("composition");
   };
   const renameComp = (name: string) => comp && setComps((all) => all.map((c) => (c.id === comp.id ? { ...c, name } : c)));
   const deleteComp = () => {
@@ -167,16 +176,16 @@ export default function App() {
         <div className="brand">ERL Scout</div>
         <nav className="nav" aria-label="Sections">
           {VIEWS.map((v) => (
-            <a key={v.id} href={`#${v.id}`} aria-current={view === v.id ? "page" : undefined}>
+            <button key={v.id} aria-current={view === v.id ? "page" : undefined} onClick={() => { setView(v.id); setHash(v.id); }}>
               <span>{v.label}</span>
               {v.id === "suivi" && Object.keys(track).length > 0 && <em>{Object.keys(track).length}</em>}
-            </a>
+            </button>
           ))}
         </nav>
         <div className="side-group">
           <h2>Tes compositions</h2>
           {comps.map((c) => (
-            <button key={c.id} aria-current={c.id === comp?.id || undefined} onClick={() => { setCompId(c.id); location.hash = "composition"; }}>{c.name}</button>
+            <button key={c.id} aria-current={c.id === comp?.id || undefined} onClick={() => { setCompId(c.id); setView("composition"); }}>{c.name}</button>
           ))}
           <button className="new" onClick={newComp}>+ Nouvelle composition</button>
           {comp && view === "composition" && (

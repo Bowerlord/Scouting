@@ -161,7 +161,7 @@ export function Drawer() {
           const known = app.byId.has(id);
           return (
             <button key={id} className="sim-row" disabled={!known} onClick={() => app.open(id)}>
-              <span>{s.name}</span>
+              <span>{app.byId.get(id)?.name ?? s.name}</span>
               <span className="muted">{s.resemblance} % de ressemblance</span>
             </button>
           );

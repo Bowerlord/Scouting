@@ -302,7 +302,7 @@ export function HomeView({ refreshed }: { refreshed: string | null }) {
       <header className="page-head">
         <div>
           <h1>{headline}</h1>
-          <p className="lede">Saison {app.season}, {app.players.filter((p) => p.rank != null).length} joueurs classés{refreshed ? `, données jusqu'au ${new Date(refreshed).toLocaleDateString("fr-FR")}` : ""}.</p>
+          <p className="lede">Saison {app.season}, {app.players.filter((p) => p.rank != null).length} joueurs classés{refreshed ? `, données mises à jour le ${new Date(refreshed).toLocaleDateString("fr-FR")}` : ""}.</p>
         </div>
       </header>
 

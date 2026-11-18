@@ -49,9 +49,9 @@ kbd { font: 500 0.72rem var(--f-body); border: 1px solid var(--line-strong); bor
 .side { position: sticky; top: 0; height: 100vh; background: var(--panel); border-right: 1px solid var(--line); padding: 20px 14px; display: flex; flex-direction: column; gap: 20px; overflow: auto; }
 .brand { font: 800 1.8rem var(--f-display); line-height: 1; padding: 0 8px; }
 .nav { display: grid; gap: 2px; }
-.nav a { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-radius: 8px; color: #4a5268; font-weight: 500; text-decoration: none; }
-.nav a:hover { background: var(--soft); }
-.nav a[aria-current="page"] { background: var(--accent-soft); color: var(--accent); }
+.nav button { border: 0; background: none; text-align: left; width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-radius: 8px; color: #4a5268; font-weight: 500; text-decoration: none; }
+.nav button:hover { background: var(--soft); }
+.nav button[aria-current="page"] { background: var(--accent-soft); color: var(--accent); }
 .nav em { font-style: normal; font-size: 0.75rem; background: var(--bg); border-radius: 999px; padding: 0 8px; color: #4a5268; }
 .side-group { display: grid; gap: 2px; }
 .side-group h2 { font-size: 0.75rem; font-weight: 500; color: var(--faint); padding: 0 10px 4px; }

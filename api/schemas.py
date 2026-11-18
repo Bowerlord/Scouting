@@ -35,7 +35,9 @@ class PlayerSummary(BaseModel):
     # Ajoutés à la liste le 2026-11-18 pour l'application web : sa vue de
     # composition situe chaque joueur en percentile sur ces trois mesures, et
     # un appel de fiche par joueur affiché coûterait des centaines de requêtes.
-    playername_original: str | None = Field(default=None, description="Pseudonyme avec sa casse d'origine, pour l'affichage")
+    playername_original: str | None = Field(
+        default=None, description="Pseudonyme avec sa casse d'origine, pour l'affichage"
+    )
     champion_pool_size: int | None = None
     promoted_to_lec: bool | None = None
     dpm_zscore: float | None = Field(default=None, description="Dégâts par minute, en écarts-types de sa ligue")

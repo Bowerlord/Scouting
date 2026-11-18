@@ -18,6 +18,8 @@ COPY requirements-dashboard.txt .
 RUN pip install --no-cache-dir -r requirements-dashboard.txt
 
 COPY app/ ./app/
+# La coquille réutilise le chargeur de l'API pour servir les mêmes données.
+COPY api/ ./api/
 COPY reports/metrics/ ./reports/metrics/
 COPY .streamlit/ ./.streamlit/
 

@@ -68,6 +68,16 @@ export interface Player {
 
 export const playerId = (key: string, role: string) => `${key}|${role}`;
 
+// Servie par la coquille Streamlit, l'app reçoit les joueurs directement dans
+// la page : pas d'aller-retour réseau, et pas de dépendance à la version
+// déployée de l'API. Hors de Streamlit, elle les demande à l'API.
+declare global {
+  interface Window {
+    __ERL__?: { rows: ApiPlayer[]; refreshed?: string | null };
+  }
+}
+const embedded = () => (typeof window !== "undefined" ? window.__ERL__ : undefined);
+
 async function getJson<T>(path: string): Promise<T> {
   const res = await fetch(`${API_URL}${path}`);
   if (!res.ok) throw new Error(`L'API a répondu ${res.status} sur ${path}`);
@@ -75,10 +85,14 @@ async function getJson<T>(path: string): Promise<T> {
 }
 
 export async function loadHealth(): Promise<{ data_refreshed_at?: string | null }> {
+  const e = embedded();
+  if (e) return { data_refreshed_at: e.refreshed ?? null };
   return getJson("/health");
 }
 
 export async function loadSeason(season: number): Promise<Player[]> {
+  const e = embedded();
+  if (e) return buildPlayers(e.rows.filter((r) => r.season === season && (r.games_played ?? 0) >= 3));
   const rows: ApiPlayer[] = [];
   let offset = 0;
   for (;;) {
