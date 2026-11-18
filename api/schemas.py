@@ -32,16 +32,20 @@ class PlayerSummary(BaseModel):
     games_played: int | None = None
     win_rate: float | None = None
     archetype: str | None = Field(default=None, description="Archétype de jeu issu du clustering")
-
-
-class PlayerDetail(PlayerSummary):
-    """Fiche complète d'un joueur, avec ses métriques de performance."""
-
+    # Ajoutés à la liste le 2026-11-18 pour l'application web : sa vue de
+    # composition situe chaque joueur en percentile sur ces trois mesures, et
+    # un appel de fiche par joueur affiché coûterait des centaines de requêtes.
+    playername_original: str | None = Field(default=None, description="Pseudonyme avec sa casse d'origine, pour l'affichage")
     champion_pool_size: int | None = None
     promoted_to_lec: bool | None = None
     dpm_zscore: float | None = Field(default=None, description="Dégâts par minute, en écarts-types de sa ligue")
     cspm_zscore: float | None = Field(default=None, description="Sbires par minute, en écarts-types")
     golddiffat15_zscore: float | None = Field(default=None, description="Différentiel d'or à 15 min, en écarts-types")
+
+
+class PlayerDetail(PlayerSummary):
+    """Fiche complète d'un joueur, avec ses métriques de performance."""
+
     cluster: int | None = None
 
 

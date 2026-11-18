@@ -1,0 +1,52 @@
+# Application web d'ERL Scout, publiée sur GitHub Pages.
+#
+# Construite à chaque push sur main qui touche web/. Les données ne sont pas
+# embarquées : l'app les lit en direct sur l'API Cloud Run, donc un
+# rafraîchissement des snapshots n'exige pas de reconstruire le site.
+
+name: Web app
+
+on:
+  push:
+    branches: ["main"]
+    paths: ["web/**", ".github/workflows/web.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
