@@ -21,18 +21,21 @@ Ce qui gouverne les choix ici :
 
 import streamlit as st
 
+# Refonte du 2026-11-18, direction « écran de draft » choisie par Alexandre
+# parmi quatre maquettes. Fond clair, cartes blanches, un seul bleu qui dit
+# « mieux que la moyenne ». Chaque chiffre est suivi de ce qu'il veut dire.
 COULEURS = {
-    "fond": "#14161A",
-    "surface": "#1B1E23",
-    "surface_haute": "#22262C",
-    "hairline": "#2E333A",
-    "hairline_forte": "#3C424B",
-    "texte": "#DDE1E6",
-    "texte_faible": "#8B939E",
-    "texte_tres_faible": "#5E656F",
-    "accent": "#E4674A",
-    "positif": "#7FA88F",
-    "negatif": "#A8776F",
+    "fond": "#E9ECF2",
+    "surface": "#FFFFFF",
+    "surface_haute": "#F4F6FA",
+    "hairline": "#E3E7EF",
+    "hairline_forte": "#D3D8E3",
+    "texte": "#161A2E",
+    "texte_faible": "#5B6277",
+    "texte_tres_faible": "#8A91A5",
+    "accent": "#2F4BE0",
+    "positif": "#2F7D5B",
+    "negatif": "#B2493E",
 }
 
 # Les cinq postes, dans l'ordre de la carte : de la voie du haut au support.
@@ -51,7 +54,74 @@ SEQUENCE_GRAPHIQUE = ["#E4674A", "#7FA88F", "#8B939E", "#B08C64", "#7E8AA3", "#9
 
 _CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&family=Big+Shoulders+Display:wght@600;800&family=Archivo:wght@400;500;600&display=swap');
+
+/* ── Écran de draft (liste de surveillance) ───────────────────────────────── */
+/* Cinq cartes, une par poste : le meilleur choix en grand, ses remplaçants en
+   bas. Big Shoulders pour les noms, comme un maillot ; Archivo pour le reste. */
+
+.dr-row {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 0.8rem;
+}
+/* Cinq colonnes ou une grille sans carte orpheline isolée sur sa ligne. */
+@media (max-width: 1199px) { .dr-row { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 860px)  { .dr-row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px)  { .dr-row { grid-template-columns: minmax(0, 1fr); } }
+
+.dr-card {
+    background: __SURFACE__;
+    border: 1px solid __HAIRLINE_FORTE__;
+    border-radius: 10px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    font-family: 'Archivo', sans-serif;
+    color: __TEXTE__;
+}
+.dr-role { font-weight: 600; font-size: 0.8rem; color: __ACCENT__; letter-spacing: 0.06em; }
+.dr-name {
+    font-family: 'Big Shoulders Display', sans-serif;
+    font-weight: 800;
+    font-size: 2.1rem;
+    line-height: 0.95;
+    overflow-wrap: anywhere;
+}
+.dr-team { color: __TEXTE_FAIBLE__; font-size: 0.84rem; margin-top: 3px; }
+.dr-lec {
+    display: inline-block; margin-top: 6px; font-size: 0.72rem; font-weight: 600;
+    color: __POSITIF__; border: 1px solid __POSITIF__; border-radius: 999px; padding: 1px 8px;
+}
+.dr-ring { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.dr-ring svg { width: 64px; height: 64px; flex: none; }
+.dr-ring p { flex: 1 1 110px; margin: 0; font-size: 0.78rem; color: __TEXTE_FAIBLE__; line-height: 1.35; }
+.dr-ring p b { color: __TEXTE__; font-weight: 600; }
+.dr-stat { font-size: 0.8rem; }
+.dr-stat .h { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 8px; }
+.dr-stat .h span { color: __TEXTE_FAIBLE__; }
+.dr-stat .h b { font-weight: 600; }
+.dr-bar { position: relative; height: 8px; background: __SURFACE_HAUTE__; border-radius: 4px; margin-top: 4px; }
+.dr-bar::before {
+    content: ""; position: absolute; left: 50%; top: -3px; bottom: -3px;
+    width: 1px; background: __TEXTE_TRES_FAIBLE__;
+}
+.dr-fill { position: absolute; top: 0; bottom: 0; border-radius: 4px; background: __ACCENT__; }
+.dr-fill.neg { background: __HAIRLINE_FORTE__; }
+.dr-alt { border-top: 1px solid __HAIRLINE__; padding-top: 10px; margin-top: auto; }
+.dr-alt h4 {
+    margin: 0 0 6px !important; font-family: 'Archivo', sans-serif !important;
+    font-size: 0.74rem !important; font-weight: 500 !important; color: __TEXTE_FAIBLE__;
+}
+.dr-alt div { display: flex; justify-content: space-between; gap: 8px; font-size: 0.86rem; padding: 3px 0; }
+.dr-alt div span:last-child { color: __TEXTE_FAIBLE__; font-variant-numeric: tabular-nums; }
+.dr-key {
+    display: flex; gap: 6px 22px; flex-wrap: wrap; margin-top: 14px;
+    font-family: 'Archivo', sans-serif; font-size: 0.8rem; color: __TEXTE_FAIBLE__;
+}
+.dr-key b { color: __ACCENT__; font-weight: 600; }
 
 /* ── Typographie ──────────────────────────────────────────────────────────── */
 /* Barlow Condensed pour les noms et les titres : elle a la compacite des
@@ -65,11 +135,11 @@ html, body, [class*="css"], .stMarkdown, p, li, label {
 }
 
 h1, h2, h3, h4 {
-    font-family: 'Barlow Condensed', 'Barlow', sans-serif !important;
+    font-family: 'Big Shoulders Display', 'Barlow Condensed', sans-serif !important;
     letter-spacing: 0.01em !important;
 }
 
-h1 { font-size: 2.6rem !important; font-weight: 600 !important; line-height: 1.05 !important; }
+h1 { font-size: 2.8rem !important; font-weight: 800 !important; line-height: 1 !important; }
 h2 { font-size: 1.4rem !important; font-weight: 500 !important; margin-top: 2rem !important; }
 h3 { font-size: 1.1rem !important; font-weight: 500 !important; }
 
@@ -503,6 +573,73 @@ def ligne_joueur(rang: int, nom: str, club: str, score: float, z: float | None, 
         f'<div class="es-score">{score:.1f}</div>'
         f"{marqueur}"
         "</div>"
+    )
+
+
+def niveau(z: float | None) -> str:
+    """Traduit un écart-type en mots, pour qu'aucune barre ne reste muette."""
+    if z is None:
+        return "pas de donnée"
+    if z >= 1.5:
+        return "très au-dessus"
+    if z >= 0.5:
+        return "au-dessus"
+    if z > -0.5:
+        return "dans la moyenne"
+    if z > -1.5:
+        return "en dessous"
+    return "très en dessous"
+
+
+def _anneau(score: float) -> str:
+    r = 26
+    c = 2 * 3.14159 * r
+    f = c * max(0.0, min(score, 100.0)) / 100
+    return (
+        '<svg viewBox="0 0 64 64" aria-hidden="true">'
+        f'<circle cx="32" cy="32" r="{r}" stroke="{COULEURS["hairline"]}" stroke-width="7" fill="none"/>'
+        f'<circle cx="32" cy="32" r="{r}" stroke="{COULEURS["accent"]}" stroke-width="7" fill="none" '
+        f'stroke-dasharray="{f:.1f} {c:.1f}" transform="rotate(-90 32 32)" stroke-linecap="round"/>'
+        f'<text x="32" y="39" text-anchor="middle" font-family="Big Shoulders Display, sans-serif" '
+        f'font-weight="800" font-size="21" fill="{COULEURS["texte"]}">{round(score)}</text></svg>'
+    )
+
+
+def _jauge(libelle: str, z: float | None) -> str:
+    """Jauge centrée sur la moyenne du poste ; les mots disent où l'on est."""
+    if z is None:
+        remplissage = ""
+    else:
+        v = max(-1.0, min(z / 2.5, 1.0)) * 50
+        pos = f"left:50%;width:{v:.1f}%" if v >= 0 else f"right:50%;width:{-v:.1f}%"
+        remplissage = f'<div class="dr-fill{" neg" if v < 0 else ""}" style="{pos}"></div>'
+    return (
+        f'<div class="dr-stat"><div class="h"><span>{libelle}</span><b>{niveau(z)}</b></div>'
+        f'<div class="dr-bar">{remplissage}</div></div>'
+    )
+
+
+def carte_poste(libelle: str, titulaire: dict, remplacants: list[dict]) -> str:
+    """Une carte de l'écran de draft : le meilleur choix du poste et ses remplaçants.
+
+    Chaque dict porte nom, club, score, z_or, z_degats, z_farm, promu.
+    """
+    t = titulaire
+    lec = '<div class="dr-lec">Déjà monté en LEC</div>' if t.get("promu") else ""
+    alts = "".join(
+        f'<div><span>{a["nom"]}</span><span>{round(a["score"])}</span></div>' for a in remplacants
+    )
+    bloc_alt = f'<div class="dr-alt"><h4>Remplaçants, potentiel LEC</h4>{alts}</div>' if alts else ""
+    return (
+        '<div class="dr-card">'
+        f'<div class="dr-role">{libelle.upper()}</div>'
+        f'<div><div class="dr-name">{t["nom"]}</div><div class="dr-team">{t["club"]}</div>{lec}</div>'
+        f'<div class="dr-ring">{_anneau(t["score"])}<p><b>Potentiel LEC sur 100</b><br>'
+        "ses stats ressemblent à celles des joueurs recrutés en LEC</p></div>"
+        f'{_jauge("Avance en or à 15 min", t.get("z_or"))}'
+        f'{_jauge("Dégâts par minute", t.get("z_degats"))}'
+        f'{_jauge("Farm par minute", t.get("z_farm"))}'
+        f"{bloc_alt}</div>"
     )
 
 

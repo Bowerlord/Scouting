@@ -58,10 +58,10 @@ saisons = sorted(df["_source_year"].dropna().unique().astype(int).tolist())
 
 theme.entete(
     f"Ligues régionales européennes · {saisons[0]}\u2013{saisons[-1]}",
-    "Liste de surveillance",
-    "Les joueurs dont le profil se rapproche le plus de ceux qui sont réellement "
-    "montés en LEC. Le score est une position relative, pas une note : un joueur "
-    "à 90 n'est pas deux fois meilleur qu'un joueur à 45.",
+    "Ton cinq de départ",
+    "Le meilleur choix à chaque poste, et ses remplaçants. Le potentiel LEC dit à "
+    "quel point les stats d'un joueur ressemblent à celles des joueurs qui ont été "
+    "recrutés en LEC. C'est un classement, pas une note : 90 n'est pas deux fois mieux que 45.",
 )
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -85,7 +85,7 @@ with st.sidebar:
     # n'a aucune valeur predictive.
     min_matchs = st.slider("Matchs minimum", min_value=0, max_value=40, value=10, step=1)
 
-    par_poste = st.slider("Joueurs par poste", min_value=3, max_value=15, value=6, step=1)
+    par_poste = st.slider("Joueurs par poste", min_value=1, max_value=8, value=4, step=1)
 
 filtre = df.copy()
 if saison != "Toutes":
@@ -102,35 +102,43 @@ if filtre.empty:
     st.warning("Aucun joueur ne correspond à ces filtres. Élargissez la saison ou baissez le seuil de matchs.")
     st.stop()
 
-st.write("")
-st.markdown(
-    '<div class="es-legende">Écart au niveau moyen de la ligue · '
-    "différentiel d'or à 15 minutes</div>",
-    unsafe_allow_html=True,
-)
+def _z(joueur, colonne: str) -> float | None:
+    v = joueur.get(colonne)
+    return None if v is None or v != v else float(v)
 
+
+def _fiche(joueur) -> dict:
+    return {
+        "nom": str(joueur.get("playername_original") or joueur["playername"]),
+        "club": f"{joueur['teamname']}, {joueur['league']}, {int(joueur['games_played'])} matchs",
+        "score": float(joueur["talent_score"]),
+        "z_or": _z(joueur, "golddiffat15_zscore"),
+        "z_degats": _z(joueur, "dpm_zscore"),
+        "z_farm": _z(joueur, "cspm_zscore"),
+        "promu": bool(joueur.get("promoted_to_lec", False)),
+    }
+
+
+# Un joueur a une ligne par split : on garde sa meilleure, sinon il occupe
+# lui-même les places de remplaçant.
+uniques = filtre.sort_values("talent_score", ascending=False).drop_duplicates(["playername", "position"])
+
+cartes = []
 for code, libelle in theme.POSTES:
-    bloc = filtre[filtre["position"] == code]
+    bloc = uniques[uniques["position"] == code]
     if bloc.empty:
         continue
+    meilleurs = [_fiche(j) for _, j in bloc.head(par_poste).iterrows()]
+    cartes.append(theme.carte_poste(libelle, meilleurs[0], meilleurs[1:]))
 
-    meilleurs = bloc.nlargest(par_poste, "talent_score")
-    lignes = [theme.entete_poste(libelle, len(bloc))]
-
-    for rang, (_, joueur) in enumerate(meilleurs.iterrows(), start=1):
-        z = joueur.get("golddiffat15_zscore")
-        lignes.append(
-            theme.ligne_joueur(
-                rang=rang,
-                nom=str(joueur.get("playername_original") or joueur["playername"]),
-                club=f"{joueur['teamname']} · {joueur['league']}",
-                score=float(joueur["talent_score"]),
-                z=None if z is None or z != z else float(z),
-                promu=bool(joueur.get("promoted_to_lec", False)),
-            )
-        )
-
-    st.markdown("".join(lignes), unsafe_allow_html=True)
+st.markdown(
+    f'<div class="dr-row">{"".join(cartes)}</div>'
+    '<div class="dr-key"><span>Trait vertical des jauges : la moyenne des joueurs '
+    "du même poste dans sa ligue</span><span><b>Bleu à droite</b> : mieux que la "
+    "moyenne</span><span>Au-dessus de 95, l'écart entre deux joueurs est faible : "
+    "le score suit aussi les résultats de l'équipe</span></div>",
+    unsafe_allow_html=True,
+)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Pied de page

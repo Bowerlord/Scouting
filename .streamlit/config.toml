@@ -11,16 +11,17 @@
 # Le reste de la hiérarchie se fait par la valeur et la position, pas par la
 # couleur.
 
+# 2026-11-18 : passage en clair, direction « écran de draft ».
 [theme]
-base = "dark"
+base = "light"
 # primaryColor peint TOUS les widgets Streamlit : curseurs, cases, etiquettes.
 # Y mettre la couleur d'accent la repandait partout, alors qu'elle doit
 # signaler une seule chose. On met donc un gris neutre ici, et l'accent
 # n'apparait que la ou le CSS du projet le place : le marqueur de promotion.
-primaryColor = "#AEB6C2"
-backgroundColor = "#14161A"
-secondaryBackgroundColor = "#1B1E23"
-textColor = "#DDE1E6"
+primaryColor = "#2F4BE0"
+backgroundColor = "#E9ECF2"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#161A2E"
 font = "sans serif"
 
 [server]
