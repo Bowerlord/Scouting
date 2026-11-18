@@ -401,26 +401,26 @@ else:
                     )
 
                     fig.update_layout(
-                        plot_bgcolor="#1a1a2e",
-                        paper_bgcolor="#1a1a2e",
-                        font=dict(color="#ffffff"),
-                        title_font=dict(color="#0BFCE4", size=15),
-                        legend=dict(bgcolor="#1a1a2e", bordercolor="#333355", borderwidth=1),
+                        plot_bgcolor="#FFFFFF",
+                        paper_bgcolor="#FFFFFF",
+                        font=dict(color="#161A2E"),
+                        title_font=dict(color="#2F4BE0", size=15),
+                        legend=dict(bgcolor="#FFFFFF", bordercolor="#D3D8E3", borderwidth=1),
                         height=480,
                     )
                     fig.update_xaxes(
-                        gridcolor="#333355",
+                        gridcolor="#D3D8E3",
                         zeroline=True,
-                        zerolinecolor="#555577",
+                        zerolinecolor="#9AA2B5",
                         zerolinewidth=1.5,
-                        tickfont=dict(color="#aaaacc"),
+                        tickfont=dict(color="#5B6277"),
                     )
                     fig.update_yaxes(
-                        gridcolor="#333355",
+                        gridcolor="#D3D8E3",
                         zeroline=True,
-                        zerolinecolor="#555577",
+                        zerolinecolor="#9AA2B5",
                         zerolinewidth=1.5,
-                        tickfont=dict(color="#aaaacc"),
+                        tickfont=dict(color="#5B6277"),
                     )
 
                     st.plotly_chart(fig, use_container_width=True)

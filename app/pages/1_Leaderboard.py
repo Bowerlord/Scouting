@@ -218,14 +218,14 @@ else:
     )
 
     fig.update_layout(
-        plot_bgcolor="#1a1a2e",
-        paper_bgcolor="#1a1a2e",
-        font=dict(color="#ffffff", size=12),
-        title_font=dict(color="#0BFCE4", size=16),
+        plot_bgcolor="#FFFFFF",
+        paper_bgcolor="#FFFFFF",
+        font=dict(color="#161A2E", size=12),
+        title_font=dict(color="#2F4BE0", size=16),
         showlegend=True,
         legend=dict(
-            bgcolor="#1a1a2e",
-            bordercolor="#333355",
+            bgcolor="#FFFFFF",
+            bordercolor="#D3D8E3",
             borderwidth=1,
         ),
         height=max(400, len(top20) * 30),
@@ -234,14 +234,14 @@ else:
 
     fig.update_xaxes(
         range=[0, 1.1],
-        gridcolor="#333355",
-        zerolinecolor="#555577",
-        tickfont=dict(color="#aaaacc"),
-        title_font=dict(color="#aaaacc"),
+        gridcolor="#D3D8E3",
+        zerolinecolor="#9AA2B5",
+        tickfont=dict(color="#5B6277"),
+        title_font=dict(color="#5B6277"),
     )
     fig.update_yaxes(
-        gridcolor="#333355",
-        tickfont=dict(color="#ffffff"),
+        gridcolor="#D3D8E3",
+        tickfont=dict(color="#161A2E"),
     )
 
     st.plotly_chart(fig, use_container_width=True)

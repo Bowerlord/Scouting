@@ -256,8 +256,8 @@ else:
             r=values_closed,
             theta=labels_closed,
             fill="toself",
-            fillcolor="rgba(11, 252, 228, 0.15)",
-            line=dict(color="#0BFCE4", width=2.5),
+            fillcolor="rgba(47, 75, 224, 0.15)",
+            line=dict(color="#2F4BE0", width=2.5),
             name=player_display,
         )
     )
@@ -280,31 +280,31 @@ else:
 
     fig.update_layout(
         polar=dict(
-            bgcolor="#1a1a2e",
+            bgcolor="#FFFFFF",
             radialaxis=dict(
                 visible=True,
                 range=[-axis_range, axis_range],
-                gridcolor="#333355",
-                tickfont=dict(color="#aaaacc", size=10),
+                gridcolor="#D3D8E3",
+                tickfont=dict(color="#5B6277", size=10),
                 tickmode="linear",
                 dtick=0.5,
             ),
             angularaxis=dict(
-                gridcolor="#333355",
-                tickfont=dict(color="#ffffff", size=12),
+                gridcolor="#D3D8E3",
+                tickfont=dict(color="#161A2E", size=12),
                 direction="clockwise",
             ),
         ),
-        plot_bgcolor="#1a1a2e",
-        paper_bgcolor="#1a1a2e",
-        font=dict(color="#ffffff"),
+        plot_bgcolor="#FFFFFF",
+        paper_bgcolor="#FFFFFF",
+        font=dict(color="#161A2E"),
         title=dict(
             text=f"Profil de performance — {player_display}",
-            font=dict(color="#0BFCE4", size=16),
+            font=dict(color="#2F4BE0", size=16),
         ),
         legend=dict(
-            bgcolor="#1a1a2e",
-            bordercolor="#333355",
+            bgcolor="#FFFFFF",
+            bordercolor="#D3D8E3",
             borderwidth=1,
         ),
         height=520,
